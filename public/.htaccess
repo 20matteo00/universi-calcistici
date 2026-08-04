@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Se il file o la cartella richiesta esistono realmente (es. assets/css/style.css),
+# servili direttamente senza passare dal router.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Altrimenti (es. /api/universi), instrada tutto verso index.php,
+# che poi decide cosa fare tramite il Router.
+RewriteRule ^ index.php [QSA,L]
