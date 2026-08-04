@@ -10,12 +10,14 @@
 ?>
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Competizioni - <?= htmlspecialchars((string) ($edizione['Nome'] ?? 'Edizione')) ?></title>
     <?php require __DIR__ . '/../../partials/link.php'; ?>
 </head>
+
 <body>
     <div class="container py-4">
         <div class="mb-4">
@@ -55,10 +57,20 @@
                                 <div class="badge text-bg-warning mb-3">Da completare</div>
                             <?php endif; ?>
 
-                            <div>
-                                <a class="btn btn-sm btn-outline-primary" href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= $idEdizioneCompetizione ?>">
-                                    Gestisci squadre
+                            <div class="d-flex flex-wrap gap-2">
+                                <a
+                                    class="btn btn-sm btn-outline-primary"
+                                    href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= $idEdizioneCompetizione ?>">
+                                    Apri competizione
                                 </a>
+
+                                <?php if ((string) ($edizione['Stato'] ?? 'bozza') === 'bozza'): ?>
+                                    <a
+                                        class="btn btn-sm btn-primary"
+                                        href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= $idEdizioneCompetizione ?>/edit">
+                                        Gestisci squadre
+                                    </a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -69,4 +81,5 @@
 
     <?php require __DIR__ . '/../../partials/script.php'; ?>
 </body>
+
 </html>

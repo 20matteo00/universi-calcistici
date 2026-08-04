@@ -114,9 +114,9 @@ Lo schema completo con tutte le colonne/tipi è nel file `database/schema.sql`.
 ## Come procedere (stato aggiornato)
 
 ### Stato reale del progetto
-Il blocco base del dominio è ormai costruito e il blocco `Edizioni` è stato avviato in modo concreto. Oggi il progetto permette già di creare stagioni, inizializzare i dati stagionali e gestire manualmente o automaticamente le rose squadra della singola edizione. [cite:4]
+Il progetto è arrivato a una fase abbastanza stabile del blocco base e del blocco stagionale. Le funzioni principali di gestione di `Squadre`, `Giocatori`, `Universi`, `Edizioni`, `EdizioneSquadra`, `EdizioneGiocatore` e `EdizioneSquadraGiocatore` risultano operative nel flusso normale di utilizzo.
 
-Il prossimo blocco logico non è più “iniziare Edizioni”, ma **consolidare le competizioni stagionali** e preparare il primo flusso completo che porta da edizione a competizione, poi a calendario, risultati e classifica. [cite:4]
+Non sono ancora stati eseguiti controlli aggressivi su tutti gli edge case, ma il flusso principale sembra reggere correttamente. Il prossimo passo è consolidare le competizioni stagionali dentro l’edizione e preparare il primo flusso completo di calendario, risultati e classifica.
 
 ### Cose già fatte
 - Struttura progetto definita e stabilizzata.
@@ -125,18 +125,13 @@ Il prossimo blocco logico non è più “iniziare Edizioni”, ma **consolidare 
 - Gestione `Universi` completata.
 - Gestione `UniversoSquadre` completata.
 - Gestione `UniversoGiocatori` completata.
-- CRUD base per:
-  - `Squadre`
-  - `Giocatori`
-  - `Universi`
-  - `Competizioni`
-  - `CompetizioneAvanzamento`
-- CRUD base di `Edizioni` avviato.
+- CRUD base per `Squadre`, `Giocatori`, `Universi`, `Competizioni` e `CompetizioneAvanzamento`.
+- Gestione `Edizioni` avviata e utilizzabile.
 - Inizializzazione dati stagionali avviata:
-  - copia `UniversoSquadre` -> `EdizioneSquadra`
-  - copia `UniversoGiocatori` -> `EdizioneGiocatore`
+  - copia `UniversoSquadre` → `EdizioneSquadra`
+  - copia `UniversoGiocatori` → `EdizioneGiocatore`
 - Gestione `EdizioneSquadraGiocatore` avviata:
-  - associazione manuale giocatori -> squadra
+  - associazione manuale giocatori → squadra
   - verifica rosa completa/incompleta
   - auto-assegnazione singola squadra
   - auto-assegnazione globale
@@ -176,37 +171,24 @@ La struttura del progetto è ormai coerente: `Controllers`, `Models`, `Services`
 
 ## Prossimi passi
 
-### 1. Chiudere davvero il blocco Edizioni
-Prima di andare avanti, il blocco `Edizioni` va considerato stabile in modo esplicito:
-- creare, visualizzare e navigare un’edizione;
-- gestire squadre e giocatori stagionali;
-- completare e verificare le rose;
-- impedire modifiche quando l’edizione viene finalizzata.
-
-Questo è il primo punto da chiudere bene, perché tutto il resto dipende dalla solidità dello stato stagionale.
+### 1. Consolidare il blocco Edizioni
+Blocchi modifica quando l’edizione è finalizzata, controlli di coerenza e rifiniture minori.
 
 ### 2. Aprire il blocco Competizioni stagionali
-Il prossimo vero blocco di sviluppo è:
+Implementare e rifinire:
 - `EdizioneCompetizione`
 - `EdizioneCompetizioneSquadra`
 
-Obiettivo: prendere una `Competizione` astratta e renderla concreta dentro una specifica `Edizione`, con le relative squadre iscritte.
-
 ### 3. Rendere giocabile una competizione semplice
-Prima di supportare formule complesse, serve un flusso completo per il caso più semplice:
-- una competizione di tipo campionato;
-- iscrizione manuale squadre;
-- generazione calendario round-robin;
-- inserimento risultati;
-- classifica affidabile.
+Prima un solo formato semplice, poi formule più complesse:
+- iscrizione squadre;
+- validazione numero partecipanti;
+- calendario;
+- risultati;
+- classifica.
 
-### 4. Rimandare ancora i Services pesanti
-`SimulazioneService` e `AvanzamentoService` vanno introdotti solo dopo che:
-- la competizione stagionale è stabile;
-- il calendario è generabile;
-- la classifica è corretta.
-
-È giusto rimandarli, perché altrimenti si automatizza un flusso che non è ancora completamente consolidato.
+### 4. Rimandare i Services pesanti
+`SimulazioneService` e `AvanzamentoService` vanno introdotti solo quando il flusso competitivo base è stabile.
 
 ## Appunti tecnici da ricordare
 - `Squadre` e `Giocatori` sono anagrafiche globali.

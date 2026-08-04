@@ -9,6 +9,7 @@ use App\Controllers\GiocatoreController;
 use App\Controllers\UniversoController;
 use App\Controllers\CompetizioneController;
 use App\Controllers\CompetizioneAvanzamentoController;
+use App\Controllers\EdizioneController;
 use App\Controllers\DevController;
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
@@ -105,22 +106,50 @@ $router->post('/universi/{id}/competizioni/collegamenti/{idCollegamento}/delete'
 | Pagine Edizioni
 |--------------------------------------------------------------------------
 */
-$router->get('/universi/{id}/edizioni', [App\Controllers\EdizioneController::class, 'indexByUniverso']);
-$router->get('/universi/{id}/edizioni/crea', [App\Controllers\EdizioneController::class, 'crea']);
-$router->post('/universi/{id}/edizioni/salva', [App\Controllers\EdizioneController::class, 'salva']);
-$router->get('/universi/{id}/edizioni/{idEdizione}', [App\Controllers\EdizioneController::class, 'showByUniverso']);
+$router->get('/universi/{id}/edizioni', [EdizioneController::class, 'indexByUniverso']);
+$router->get('/universi/{id}/edizioni/crea', [EdizioneController::class, 'crea']);
+$router->post('/universi/{id}/edizioni/salva', [EdizioneController::class, 'salva']);
+$router->get('/universi/{id}/edizioni/{idEdizione}', [EdizioneController::class, 'showByUniverso']);
 
-$router->get('/universi/{id}/edizioni/{idEdizione}/rose', [App\Controllers\EdizioneController::class, 'roseIndex']);
-$router->post('/universi/{id}/edizioni/{idEdizione}/rose/auto', [App\Controllers\EdizioneController::class, 'roseAutoTutte']);
-$router->post('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}/auto', [App\Controllers\EdizioneController::class, 'roseAutoSquadra']);
-$router->get('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}', [App\Controllers\EdizioneController::class, 'roseEdit']);
-$router->post('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}', [App\Controllers\EdizioneController::class, 'roseUpdate']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/rose', [EdizioneController::class, 'roseIndex']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/rose/auto', [EdizioneController::class, 'roseAutoTutte']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}/auto', [EdizioneController::class, 'roseAutoSquadra']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}', [EdizioneController::class, 'roseEdit']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}', [EdizioneController::class, 'roseUpdate']);
 
-$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni', [App\Controllers\EdizioneController::class, 'competizioniIndex']);
-$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [App\Controllers\EdizioneController::class, 'competizioniEdit']);
-$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [App\Controllers\EdizioneController::class, 'competizioniUpdate']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni', [EdizioneController::class, 'competizioniIndex']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'showCompetizione']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/edit', [EdizioneController::class, 'competizioniEdit']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/edit', [EdizioneController::class, 'competizioniUpdate']);
 
-$router->post('/universi/{id}/edizioni/{idEdizione}/finalizza', [App\Controllers\EdizioneController::class, 'finalizzaEdizione']);
+/*
+|--------------------------------------------------------------------------
+| Partite - singola partita
+|--------------------------------------------------------------------------
+*/
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/risultato', [EdizioneController::class, 'salvaRisultatoPartita']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/{idPartita}/simula', [EdizioneController::class, 'simulaPartita']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/{idPartita}/reset', [EdizioneController::class, 'resetPartita']);
+
+/*
+|--------------------------------------------------------------------------
+| Partite - giornata
+|--------------------------------------------------------------------------
+*/
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/salva', [EdizioneController::class, 'salvaGiornata']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/simula', [EdizioneController::class, 'simulaGiornata']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/reset', [EdizioneController::class, 'resetGiornata']);
+
+/*
+|--------------------------------------------------------------------------
+| Partite - intera competizione
+|--------------------------------------------------------------------------
+*/
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/salva-tutte', [EdizioneController::class, 'salvaTutteLePartite']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/simula-tutte', [EdizioneController::class, 'simulaTutteLePartite']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/partite/reset-tutte', [EdizioneController::class, 'resetTutteLePartite']);
+
+$router->post('/universi/{id}/edizioni/{idEdizione}/finalizza', [EdizioneController::class, 'finalizzaEdizione']);
 
 $request = new Request();
 $router->gestisci($request);

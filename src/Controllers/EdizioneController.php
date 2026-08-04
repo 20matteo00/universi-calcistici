@@ -9,18 +9,21 @@ use App\Http\Request;
 use App\Models\Edizione;
 use App\Models\Universo;
 use App\Services\CreazioneEdizioneService;
+use App\Services\CalendarioService;
 
 class EdizioneController
 {
     private Universo $universi;
     private Edizione $edizioni;
     private CreazioneEdizioneService $creazioneEdizioneService;
+    private CalendarioService $calendarioService;
 
     public function __construct()
     {
         $this->universi = new Universo();
         $this->edizioni = new Edizione();
         $this->creazioneEdizioneService = new CreazioneEdizioneService();
+        $this->calendarioService = new CalendarioService();
     }
 
     public function crea(Request $request, array $parametri): void
@@ -275,6 +278,8 @@ class EdizioneController
             return;
         }
 
+        $this->bloccaSeEdizioneNonModificabile($idUniverso, $idEdizione, $edizione);
+
         if (!$this->edizioni->haGiocatoriEdizione($idEdizione)) {
             header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione);
             exit;
@@ -444,6 +449,8 @@ class EdizioneController
             return;
         }
 
+        $this->bloccaSeEdizioneNonModificabile($idUniverso, $idEdizione, $edizione);
+
         $edizioneCompetizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
 
         if ($edizioneCompetizione === null || (int) ($edizioneCompetizione['IDEdizione'] ?? 0) !== $idEdizione) {
@@ -555,11 +562,7 @@ class EdizioneController
             return;
         }
 
-        if ((string) ($edizione['Stato'] ?? 'bozza') !== 'bozza') {
-            http_response_code(403);
-            echo 'Edizione bloccata';
-            return;
-        }
+        $this->bloccaSeEdizioneNonModificabile($idUniverso, $idEdizione, $edizione);
 
         try {
             $this->edizioni->autoAssegnaRose($idEdizione, null);
@@ -587,11 +590,7 @@ class EdizioneController
             return;
         }
 
-        if ((string) ($edizione['Stato'] ?? 'bozza') !== 'bozza') {
-            http_response_code(403);
-            echo 'Edizione bloccata';
-            return;
-        }
+        $this->bloccaSeEdizioneNonModificabile($idUniverso, $idEdizione, $edizione);
 
         try {
             $this->edizioni->autoAssegnaRose($idEdizione, $idSquadra);
@@ -623,16 +622,33 @@ class EdizioneController
             exit;
         }
 
-        $roseComplete = $this->edizioni->tutteLeRoseComplete($idEdizione);
-        $competizioniComplete = true;
+        $haGiocatoriEdizione = $this->edizioni->haGiocatoriEdizione($idEdizione);
+        $roseComplete = $haGiocatoriEdizione ? $this->edizioni->tutteLeRoseComplete($idEdizione) : true;
 
+        $squadreEdizione = $this->edizioni->squadreEdizione($idEdizione);
         $competizioni = $this->edizioni->competizioniEdizione($idEdizione);
+
+        $squadreCoperte = [];
+
         foreach ($competizioni as $competizione) {
             $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
-            $numeroRichiesto = (int) ($competizione['NumeroPartecipanti'] ?? 0);
-            $iscritte = count($this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione));
+            $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
 
-            if ($numeroRichiesto > 0 && $iscritte < $numeroRichiesto) {
+            foreach ($squadreIscritte as $squadraIscritta) {
+                $idSquadra = (int) ($squadraIscritta['IDSquadra'] ?? 0);
+
+                if ($idSquadra > 0) {
+                    $squadreCoperte[$idSquadra] = true;
+                }
+            }
+        }
+
+        $competizioniComplete = true;
+
+        foreach ($squadreEdizione as $squadraEdizione) {
+            $idSquadra = (int) ($squadraEdizione['IDSquadra'] ?? 0);
+
+            if ($idSquadra > 0 && !isset($squadreCoperte[$idSquadra])) {
                 $competizioniComplete = false;
                 break;
             }
@@ -640,15 +656,111 @@ class EdizioneController
 
         if (!$roseComplete || !$competizioniComplete) {
             http_response_code(400);
-            echo 'Non puoi finalizzare: rose o competizioni non complete.';
+            echo 'Non puoi finalizzare: rose incomplete oppure esistono squadre non presenti in alcuna competizione.';
             return;
         }
 
         $pdo = Database::getConnessione();
-        $stmt = $pdo->prepare("UPDATE Edizioni SET Stato = 'conclusa' WHERE ID = :idEdizione");
-        $stmt->execute(['idEdizione' => $idEdizione]);
+        $stmt = $pdo->prepare("
+            UPDATE Edizioni
+            SET Stato = 'in_corso'
+            WHERE ID = :idEdizione
+        ");
+
+        $this->calendarioService->generaPerEdizione($idEdizione);
+
+        $stmt->execute([
+            'idEdizione' => $idEdizione,
+        ]);
 
         header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione);
+        exit;
+    }
+
+    private function edizioneModificabile(array $edizione): bool
+    {
+        return (string) ($edizione['Stato'] ?? 'bozza') === 'bozza';
+    }
+
+    private function bloccaSeEdizioneNonModificabile(int $idUniverso, int $idEdizione, array $edizione): void
+    {
+        if ($this->edizioneModificabile($edizione)) {
+            return;
+        }
+
+        http_response_code(403);
+        echo 'Questa edizione non è più modificabile.';
+        exit;
+    }
+
+    public function showCompetizione(Request $request, array $params): void
+    {
+        $id = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        $universo = $this->universi->find($id);
+        $edizione = $this->edizioni->find($idEdizione);
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if (!$universo || !$edizione || !$competizione) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
+            return;
+        }
+
+        if ((int) ($competizione['IDEdizione'] ?? 0) !== $idEdizione) {
+            http_response_code(404);
+            echo 'Competizione non trovata per questa edizione';
+            return;
+        }
+
+        $partitePerGiornata = $this->edizioni->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
+
+        require __DIR__ . '/../Views/edizioni/competizioni/show.php';
+    }
+
+    public function salvaRisultatoPartita(Request $request, array $params): void
+    {
+        $id = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        $edizione = $this->edizioni->find($idEdizione);
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if (!$edizione || !$competizione || (int) ($competizione['IDEdizione'] ?? 0) !== $idEdizione) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
+            return;
+        }
+
+        $idPartita = (int) ($_POST['id_partita'] ?? 0);
+        $goalCasa = $_POST['goal_casa'] ?? null;
+        $goalTrasferta = $_POST['goal_trasferta'] ?? null;
+
+        $goalCasa = $goalCasa === '' ? null : (int) $goalCasa;
+        $goalTrasferta = $goalTrasferta === '' ? null : (int) $goalTrasferta;
+
+        if ($idPartita <= 0) {
+            http_response_code(422);
+            echo 'Partita non valida';
+            return;
+        }
+
+        $partita = $this->edizioni->findPartita($idPartita);
+
+        if (!$partita || (int) ($partita['IDEdizioneCompetizione'] ?? 0) !== $idEdizioneCompetizione) {
+            http_response_code(404);
+            echo 'Partita non trovata';
+            return;
+        }
+
+        $stato = ($goalCasa !== null && $goalTrasferta !== null) ? 'giocata' : 'programmata';
+
+        $this->edizioni->aggiornaRisultatoPartita($idPartita, $goalCasa, $goalTrasferta, $stato);
+
+        header('Location: /universi/' . $id . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
         exit;
     }
 }

@@ -118,12 +118,19 @@
                         </div>
                     </div>
 
-                    <?php if ($haGiocatoriEdizione && $roseComplete): ?>
+                    <?php
+                    $statoBozza = (string) ($edizione['Stato'] ?? 'bozza') === 'bozza';
+                    $roseOkPerFinalizzazione = !$haGiocatoriEdizione || $roseComplete;
+
+
+                    ?>
+
+                    <?php if ($statoBozza && $roseOkPerFinalizzazione): ?>
                         <div class="border-top pt-4 mt-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
                             <div>
-                                <div class="fw-semibold text-danger mb-1">Blocco definitivo modifiche</div>
+                                <div class="fw-semibold text-danger mb-1">Avvia stagione e blocca configurazione</div>
                                 <p class="text-muted small mb-0">
-                                    Dopo la finalizzazione l’edizione passa allo stato concluso e non deve più essere modificata.
+                                    Dopo la finalizzazione l’edizione passa allo stato in_corso e la configurazione iniziale non potrà più essere modificata.
                                 </p>
                             </div>
 
