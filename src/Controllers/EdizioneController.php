@@ -8,6 +8,7 @@ use App\Config\Database;
 use App\Http\Request;
 use App\Models\Edizione;
 use App\Models\Universo;
+use App\Models\Partita;
 use App\Services\CreazioneEdizioneService;
 use App\Services\CalendarioService;
 
@@ -16,12 +17,14 @@ class EdizioneController
     private Universo $universi;
     private Edizione $edizioni;
     private CreazioneEdizioneService $creazioneEdizioneService;
+    private Partita $partite;
     private CalendarioService $calendarioService;
 
     public function __construct()
     {
         $this->universi = new Universo();
         $this->edizioni = new Edizione();
+        $this->partite = new Partita();
         $this->creazioneEdizioneService = new CreazioneEdizioneService();
         $this->calendarioService = new CalendarioService();
     }
@@ -715,52 +718,56 @@ class EdizioneController
             return;
         }
 
-        $partitePerGiornata = $this->edizioni->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
+        $partitePerGiornata = $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 
         require __DIR__ . '/../Views/edizioni/competizioni/show.php';
     }
 
-    public function salvaRisultatoPartita(Request $request, array $params): void
+    public function roseShow(Request $request, array $parametri): void
     {
-        $id = (int) ($params['id'] ?? 0);
-        $idEdizione = (int) ($params['idEdizione'] ?? 0);
-        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+        $idUniverso = (int) ($parametri['id'] ?? 0);
+        $idEdizione = (int) ($parametri['idEdizione'] ?? 0);
+        $idSquadra = (int) ($parametri['idSquadra'] ?? 0);
 
+        $universo = $this->universi->find($idUniverso);
         $edizione = $this->edizioni->find($idEdizione);
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
 
-        if (!$edizione || !$competizione || (int) ($competizione['IDEdizione'] ?? 0) !== $idEdizione) {
+        if ($universo === null) {
             http_response_code(404);
-            echo 'Risorsa non trovata';
+            echo 'Universo non trovato';
             return;
         }
 
-        $idPartita = (int) ($_POST['id_partita'] ?? 0);
-        $goalCasa = $_POST['goal_casa'] ?? null;
-        $goalTrasferta = $_POST['goal_trasferta'] ?? null;
-
-        $goalCasa = $goalCasa === '' ? null : (int) $goalCasa;
-        $goalTrasferta = $goalTrasferta === '' ? null : (int) $goalTrasferta;
-
-        if ($idPartita <= 0) {
-            http_response_code(422);
-            echo 'Partita non valida';
-            return;
-        }
-
-        $partita = $this->edizioni->findPartita($idPartita);
-
-        if (!$partita || (int) ($partita['IDEdizioneCompetizione'] ?? 0) !== $idEdizioneCompetizione) {
+        if ($edizione === null || (int) ($edizione['IDUniverso'] ?? 0) !== $idUniverso) {
             http_response_code(404);
-            echo 'Partita non trovata';
+            echo 'Edizione non trovata';
             return;
         }
 
-        $stato = ($goalCasa !== null && $goalTrasferta !== null) ? 'giocata' : 'programmata';
+        if (!$this->edizioni->haGiocatoriEdizione($idEdizione)) {
+            header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione);
+            exit;
+        }
 
-        $this->edizioni->aggiornaRisultatoPartita($idPartita, $goalCasa, $goalTrasferta, $stato);
+        $squadre = $this->edizioni->squadreEdizione($idEdizione);
+        $squadra = null;
 
-        header('Location: /universi/' . $id . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
-        exit;
+        foreach ($squadre as $riga) {
+            if ((int) $riga['IDSquadra'] === $idSquadra) {
+                $squadra = $riga;
+                break;
+            }
+        }
+
+        if ($squadra === null) {
+            http_response_code(404);
+            echo 'Squadra non trovata nell’edizione';
+            return;
+        }
+
+        $giocatoriAssegnati = $this->edizioni->giocatoriAssegnatiASquadra($idEdizione, $idSquadra);
+        $verificaRosa = $this->edizioni->verificaRosaSquadra($idEdizione, $idSquadra);
+
+        require __DIR__ . '/../Views/edizioni/rose/show.php';
     }
 }

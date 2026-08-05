@@ -6,6 +6,7 @@
 /** @var array $verificheRose */
 /** @var bool $roseComplete */
 
+$edizioneModificabile = ((string) ($edizione['Stato'] ?? 'bozza')) === 'bozza';
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -28,13 +29,20 @@
                         ← Torna all'edizione
                     </a>
 
-                    <h1 class="h2 mb-2">Associa giocatori → squadre</h1>
+                    <h1 class="h2 mb-2">
+                        <?= $edizioneModificabile ? 'Associa giocatori → squadre' : 'Rose delle squadre' ?>
+                    </h1>
+
                     <p class="text-muted mb-0">
-                        Ogni squadra deve avere una rosa valida di 18 giocatori, con un minimo per ruolo prima della finalizzazione della stagione.
+                        <?php if ($edizioneModificabile): ?>
+                            Ogni squadra deve avere una rosa valida di 18 giocatori, con un minimo per ruolo prima della finalizzazione della stagione.
+                        <?php else: ?>
+                            Consulta la composizione delle rose dell’edizione e il loro stato di completezza.
+                        <?php endif; ?>
                     </p>
                 </div>
 
-                <?php if (!$roseComplete): ?>
+                <?php if ($edizioneModificabile && !$roseComplete): ?>
                     <div class="d-flex flex-shrink-0">
                         <form method="post" action="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/auto" class="m-0">
                             <button type="submit" class="btn btn-success px-4">
@@ -62,7 +70,11 @@
                                     Alcune squadre non hanno ancora 18 giocatori o non rispettano la distribuzione minima per ruolo.
                                 </div>
                             </div>
-                            <span class="badge text-bg-dark px-3 py-2">Azione richiesta</span>
+                            <?php if ($edizioneModificabile): ?>
+                                <span class="badge text-bg-dark px-3 py-2">Azione richiesta</span>
+                            <?php else: ?>
+                                <span class="badge text-bg-secondary px-3 py-2">Sola lettura</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -78,7 +90,7 @@
                 ?>
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="card shadow-sm border-0 h-100">
-                        <div class="card-body">
+                        <div class="card-body d-flex flex-column">
                             <h2 class="h5 mb-2"><?= htmlspecialchars((string) ($squadra['Nome'] ?? '')) ?></h2>
 
                             <?php if ($ok): ?>
@@ -95,12 +107,21 @@
                                 <div><strong>Offensivi:</strong> <?= (int) ($verifica['conteggi']['offensivi'] ?? 0) ?>/5</div>
                             </div>
 
-                            <a class="btn btn-sm btn-outline-primary" href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/<?= $idSquadra ?>">
-                                Gestisci rosa
-                            </a>
-                            <form method="post" action="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/<?= $idSquadra ?>/auto" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-outline-success">Assegna automaticamente</button>
-                            </form>
+                            <div class="mt-auto d-flex flex-wrap gap-2">
+                                <?php if ($edizioneModificabile): ?>
+                                    <a class="btn btn-sm btn-outline-primary" href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/<?= $idSquadra ?>">
+                                        Gestisci rosa
+                                    </a>
+
+                                    <form method="post" action="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/<?= $idSquadra ?>/auto" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Assegna automaticamente</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a class="btn btn-sm btn-outline-secondary" href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/rose/<?= $idSquadra ?>/show">
+                                        Visualizza rosa
+                                    </a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>

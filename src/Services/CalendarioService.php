@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Edizione;
+use App\Models\Partita;
 
 class CalendarioService
 {
     private Edizione $edizioni;
+    private Partita $partite;
 
     public function __construct()
     {
         $this->edizioni = new Edizione();
+        $this->partite = new Partita();
     }
 
     public function generaPerEdizione(int $idEdizione): void
@@ -23,7 +26,7 @@ class CalendarioService
             $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
             $tipo = (string) ($competizione['Tipo'] ?? '');
 
-            if ($this->edizioni->contaPartitePerCompetizione($idEdizioneCompetizione) > 0) {
+            if ($this->partite->contaPartitePerCompetizione($idEdizioneCompetizione) > 0) {
                 continue;
             }
 
@@ -114,7 +117,7 @@ class CalendarioService
             }
         }
 
-        $this->edizioni->creaPartiteBatch($partite);
+        $this->partite->creaPartiteBatch($partite);
     }
 
     private function generaRoundRobinBase(array $idsSquadre): array
