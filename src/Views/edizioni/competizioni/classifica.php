@@ -78,58 +78,6 @@ function uc_nome_competizione(array $competizione): string
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Classifica · <?= htmlspecialchars(uc_nome_competizione($competizione)) ?></title>
     <?php require __DIR__ . '/../../partials/link.php'; ?>
-    <style>
-        .uc-page-header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .uc-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: .5rem;
-        }
-
-        .uc-forma {
-            display: inline-flex;
-            flex-wrap: wrap;
-            gap: .25rem;
-        }
-
-        .uc-forma .badge {
-            min-width: 2rem;
-            text-align: center;
-        }
-
-        .uc-stat-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: .5rem;
-            padding: .5rem .75rem;
-            border-radius: 999px;
-            background: rgba(0, 0, 0, 0.04);
-            font-size: .95rem;
-        }
-
-        .uc-card-title {
-            margin-bottom: .25rem;
-        }
-
-        .uc-card-subtitle {
-            color: #6c757d;
-            margin-bottom: 0;
-        }
-
-        @media (max-width: 767.98px) {
-
-            .uc-responsive-table th,
-            .uc-responsive-table td {
-                white-space: nowrap;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -261,7 +209,22 @@ function uc_nome_competizione(array $competizione): string
                                     ?>
                                     <tr>
                                         <td class="fw-semibold"><?= (int) ($riga['Posizione'] ?? ($indice + 1)) ?></td>
-                                        <td class="fw-semibold"><?= htmlspecialchars((string) ($riga['Nome'] ?? '')) ?></td>
+                                        <td>
+                                            <?php
+                                            $nomeSquadra = (string) ($riga['Nome'] ?? '');
+                                            $nomeBreveSquadra = (string) (($riga['NomeBreve'] ?? '') ?: $nomeSquadra);
+                                            $coloriSquadra = $riga['Colori'] ?? [];
+                                            $bgSquadra = (string) ($coloriSquadra['sfondo'] ?? '#6c757d');
+                                            $fgSquadra = (string) ($coloriSquadra['testo'] ?? '#ffffff');
+                                            $bdSquadra = (string) ($coloriSquadra['bordo'] ?? $bgSquadra);
+                                            ?>
+                                            <span
+                                                class="team-badge team-badge-pill"
+                                                title="<?= htmlspecialchars($nomeSquadra) ?>"
+                                                style="background-color: <?= htmlspecialchars($bgSquadra) ?>; color: <?= htmlspecialchars($fgSquadra) ?>; border: 2px solid <?= htmlspecialchars($bdSquadra) ?>; min-width: 96px;">
+                                                <?= htmlspecialchars($nomeSquadra) ?>
+                                            </span>
+                                        </td>
                                         <td class="text-center"><?= (int) ($riga['Giocate'] ?? 0) ?></td>
                                         <td class="text-center"><?= (int) ($riga['Vinte'] ?? 0) ?></td>
                                         <td class="text-center"><?= (int) ($riga['Pareggiate'] ?? 0) ?></td>
@@ -383,7 +346,7 @@ function uc_nome_competizione(array $competizione): string
                                                 $bd = (string) ($segmento['colori']['bordo'] ?? $bg);
                                                 ?>
                                                 <span
-                                                    class="d-inline-block px-3 py-2 rounded fw-semibold"
+                                                    class="team-badge team-badge-pill"
                                                     style="background-color: <?= htmlspecialchars($bg) ?>; color: <?= htmlspecialchars($fg) ?>; border: 2px solid <?= htmlspecialchars($bd) ?>; min-width: 72px;">
                                                     <?= htmlspecialchars((string) $segmento['label']) ?>
                                                 </span>

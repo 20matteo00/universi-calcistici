@@ -201,7 +201,13 @@ class ClassificaService
             $goalTrasferta = (int) $partita['GoalTrasferta'];
 
             if ($filtro === 'casa') {
-                $this->inizializzaSquadra($classifica, $idCasa, (string) $partita['NomeSquadraCasa']);
+                $this->inizializzaSquadra(
+                    $classifica,
+                    $idCasa,
+                    (string) $partita['NomeSquadraCasa'],
+                    (string) ($partita['ColoriSquadraCasa'] ?? '{}')
+                );
+
                 $this->aggiornaSquadra(
                     $classifica[$idCasa],
                     $goalCasa,
@@ -214,7 +220,13 @@ class ClassificaService
             }
 
             if ($filtro === 'trasferta') {
-                $this->inizializzaSquadra($classifica, $idTrasferta, (string) $partita['NomeSquadraTrasferta']);
+                $this->inizializzaSquadra(
+                    $classifica,
+                    $idTrasferta,
+                    (string) $partita['NomeSquadraTrasferta'],
+                    (string) ($partita['ColoriSquadraTrasferta'] ?? '{}')
+                );
+
                 $this->aggiornaSquadra(
                     $classifica[$idTrasferta],
                     $goalTrasferta,
@@ -226,8 +238,19 @@ class ClassificaService
                 continue;
             }
 
-            $this->inizializzaSquadra($classifica, $idCasa, (string) $partita['NomeSquadraCasa']);
-            $this->inizializzaSquadra($classifica, $idTrasferta, (string) $partita['NomeSquadraTrasferta']);
+            $this->inizializzaSquadra(
+                $classifica,
+                $idCasa,
+                (string) $partita['NomeSquadraCasa'],
+                (string) ($partita['ColoriSquadraCasa'] ?? '{}')
+            );
+
+            $this->inizializzaSquadra(
+                $classifica,
+                $idTrasferta,
+                (string) $partita['NomeSquadraTrasferta'],
+                (string) ($partita['ColoriSquadraTrasferta'] ?? '{}')
+            );
 
             $this->aggiornaSquadra(
                 $classifica[$idCasa],
@@ -345,7 +368,7 @@ class ClassificaService
         return $partitePerGiro;
     }
 
-    private function inizializzaSquadra(array &$classifica, int $idSquadra, string $nome): void
+    private function inizializzaSquadra(array &$classifica, int $idSquadra, string $nome, string $jsonColori = '{}'): void
     {
         if (isset($classifica[$idSquadra])) {
             return;
@@ -354,6 +377,8 @@ class ClassificaService
         $classifica[$idSquadra] = [
             'IDSquadra' => $idSquadra,
             'Nome' => $nome,
+            'NomeBreve' => $this->abbreviaNomeSquadra($nome),
+            'Colori' => $this->decodificaColori($jsonColori),
             'Giocate' => 0,
             'Vinte' => 0,
             'Pareggiate' => 0,
