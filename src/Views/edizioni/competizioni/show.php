@@ -22,9 +22,17 @@ foreach ($partitePerGiornata as $partite) {
 
 <body>
     <div class="container py-4 competizione-page">
-        <a
-            href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni"
-            class="link-secondary text-decoration-none d-inline-block mb-3">← Torna alle competizioni</a>
+        <div class="d-flex mb-2">
+            <a
+                href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni"
+                class="link-secondary text-decoration-none d-inline-block mb-3">← Torna alle competizioni</a>
+
+            <a
+                href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/classifica"
+                class="btn btn-outline-secondary ms-auto">
+                Vai alla classifica
+            </a>
+        </div>
 
         <form
             method="post"
@@ -130,8 +138,15 @@ foreach ($partitePerGiornata as $partite) {
                                             <tbody>
                                                 <?php foreach ($partite as $partita): ?>
                                                     <tr>
-                                                        <td class="fw-semibold">
-                                                            <?= htmlspecialchars((string) ($partita['NomeSquadraCasa'] ?? '')) ?>
+                                                        <td>
+                                                            <div class="fw-semibold">
+                                                                <?= htmlspecialchars((string) ($partita['NomeSquadraCasa'] ?? '')) ?>
+                                                            </div>
+                                                            <?php if (!empty($partita['PreviewSimulazione']['casa']['rating_globale'])): ?>
+                                                                <div class="small text-muted">
+                                                                    PM <?= number_format((float) $partita['PreviewSimulazione']['casa']['rating_globale'], 1, ',', '.') ?>
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </td>
 
                                                         <td class="text-center">
@@ -142,10 +157,23 @@ foreach ($partitePerGiornata as $partite) {
                                                             <?php else: ?>
                                                                 <span class="text-muted">vs</span>
                                                             <?php endif; ?>
+
+                                                            <?php if (!empty($partita['PreviewSimulazione']['esito_atteso'])): ?>
+                                                                <div class="small text-muted mt-1">
+                                                                    <?= htmlspecialchars((string) $partita['PreviewSimulazione']['esito_atteso']) ?>
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </td>
 
-                                                        <td class="fw-semibold">
-                                                            <?= htmlspecialchars((string) ($partita['NomeSquadraTrasferta'] ?? '')) ?>
+                                                        <td>
+                                                            <div class="fw-semibold">
+                                                                <?= htmlspecialchars((string) ($partita['NomeSquadraTrasferta'] ?? '')) ?>
+                                                            </div>
+                                                            <?php if (!empty($partita['PreviewSimulazione']['trasferta']['rating_globale'])): ?>
+                                                                <div class="small text-muted">
+                                                                    PM <?= number_format((float) $partita['PreviewSimulazione']['trasferta']['rating_globale'], 1, ',', '.') ?>
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </td>
 
                                                         <td>
@@ -229,11 +257,11 @@ foreach ($partitePerGiornata as $partite) {
     <?php require __DIR__ . '/../../partials/script.php'; ?>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const buttons = document.querySelectorAll('.js-btn-salva-singola');
 
-            buttons.forEach(function (button) {
-                button.addEventListener('click', function () {
+            buttons.forEach(function(button) {
+                button.addEventListener('click', function() {
                     const partitaId = button.getAttribute('data-partita-id');
                     const form = button.closest('.js-form-salva-singola');
 

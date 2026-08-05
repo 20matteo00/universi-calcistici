@@ -4,6 +4,7 @@
 /** @var array $edizione */
 /** @var bool $haGiocatoriEdizione */
 /** @var bool $roseComplete */
+/** @var bool $puoFinalizzare */
 
 ?>
 <!DOCTYPE html>
@@ -120,12 +121,9 @@
 
                     <?php
                     $statoBozza = (string) ($edizione['Stato'] ?? 'bozza') === 'bozza';
-                    $roseOkPerFinalizzazione = !$haGiocatoriEdizione || $roseComplete;
-
-
                     ?>
 
-                    <?php if ($statoBozza && $roseOkPerFinalizzazione): ?>
+                    <?php if ($statoBozza && $puoFinalizzare): ?>
                         <div class="border-top pt-4 mt-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
                             <div>
                                 <div class="fw-semibold text-danger mb-1">Avvia stagione e blocca configurazione</div>

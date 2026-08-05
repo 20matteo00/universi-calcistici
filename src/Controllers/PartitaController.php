@@ -8,18 +8,21 @@ use App\Http\Request;
 use App\Models\Edizione;
 use App\Models\Partita;
 use App\Models\Universo;
+use App\Services\SimulazioneService;
 
 class PartitaController
 {
     private Universo $universi;
     private Edizione $edizioni;
     private Partita $partite;
+    private SimulazioneService $simulazione;
 
     public function __construct()
     {
         $this->universi = new Universo();
         $this->edizioni = new Edizione();
         $this->partite = new Partita();
+        $this->simulazione = new SimulazioneService();
     }
 
     public function salvaRisultato(Request $request, array $params): void
@@ -290,10 +293,7 @@ class PartitaController
 
     private function simulaPartitaById(int $idPartita): void
     {
-        $goalCasa = mt_rand(1, 5);
-        $goalTrasferta = mt_rand(1, 5);
-
-        $this->partite->aggiornaRisultatoPartita($idPartita, $goalCasa, $goalTrasferta, 'giocata');
+        $this->simulazione->simulaPartita($idPartita);
     }
 
     private function salvaRisultatoPartitaById(int $idPartita, mixed $goalCasaRaw, mixed $goalTrasfertaRaw): bool

@@ -92,12 +92,17 @@ use App\Support\CompetitionTypes;
                                 <h2 class="h5 mb-3">Gironi</h2>
 
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
+                                        <label for="gironi_livello" class="form-label">Livello</label>
+                                        <input type="number" min="1" class="form-control js-struttura-field" id="gironi_livello" placeholder="Es. 1" value="<?= htmlspecialchars((string) ($vecchiDati['gironi_livello'] ?? '')) ?>">
+                                    </div>
+
+                                    <div class="col-md-4">
                                         <label for="gironi_giri" class="form-label">Giri</label>
                                         <input type="number" min="1" class="form-control js-struttura-field" id="gironi_giri" value="<?= (int) ($vecchiDati['gironi_giri'] ?? 1) ?>">
                                     </div>
 
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label for="gironi_numero" class="form-label">Numero gironi</label>
                                         <input type="number" min="1" class="form-control js-struttura-field" id="gironi_numero" value="<?= (int) ($vecchiDati['gironi_numero'] ?? 4) ?>">
                                     </div>
@@ -110,17 +115,12 @@ use App\Support\CompetitionTypes;
                                 <h2 class="h5 mb-3">Lega</h2>
 
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="lega_livello" class="form-label">Livello</label>
                                         <input type="number" min="1" class="form-control js-struttura-field" id="lega_livello" placeholder="Es. 1" value="<?= htmlspecialchars((string) ($vecchiDati['lega_livello'] ?? '')) ?>">
                                     </div>
 
-                                    <div class="col-md-4">
-                                        <label for="lega_girone" class="form-label">Girone</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="lega_girone" placeholder="Es. 1" value="<?= htmlspecialchars((string) ($vecchiDati['lega_girone'] ?? '')) ?>">
-                                    </div>
-
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="lega_giri" class="form-label">Giri</label>
                                         <input type="number" min="1" class="form-control js-struttura-field" id="lega_giri" value="<?= (int) ($vecchiDati['lega_giri'] ?? 2) ?>">
                                     </div>
@@ -336,6 +336,7 @@ use App\Support\CompetitionTypes;
 
                 if (tipo === 'gironi') {
                     struttura = {
+                        livello: intOrNull(document.getElementById('gironi_livello').value),
                         giri: intOrNull(document.getElementById('gironi_giri').value),
                         numero_gironi: intOrNull(document.getElementById('gironi_numero').value),
                         punti: {
@@ -352,7 +353,6 @@ use App\Support\CompetitionTypes;
                 if (tipo === 'lega') {
                     struttura = {
                         livello: intOrNull(document.getElementById('lega_livello').value),
-                        girone: intOrNull(document.getElementById('lega_girone').value),
                         giri: intOrNull(document.getElementById('lega_giri').value),
                         punti: {
                             vittoria: intOrNull(document.getElementById('punti_vittoria').value) ?? 3,
@@ -376,10 +376,10 @@ use App\Support\CompetitionTypes;
                 strutturaField.value = JSON.stringify(struttura, null, 2);
             }
 
+            document.getElementById('gironi_livello')?.addEventListener('input', buildStruttura);
             document.getElementById('gironi_giri')?.addEventListener('input', buildStruttura);
             document.getElementById('gironi_numero')?.addEventListener('input', buildStruttura);
             document.getElementById('lega_livello')?.addEventListener('input', buildStruttura);
-            document.getElementById('lega_girone')?.addEventListener('input', buildStruttura);
             document.getElementById('lega_giri')?.addEventListener('input', buildStruttura);
             document.getElementById('elim_giri')?.addEventListener('input', buildStruttura);
             document.getElementById('elim_finale_secca')?.addEventListener('change', buildStruttura);

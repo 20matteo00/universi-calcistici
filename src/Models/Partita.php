@@ -189,4 +189,56 @@ class Partita
 
         return $giornate;
     }
+
+    public function giornatePerCompetizione(int $idEdizioneCompetizione): array
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        SELECT DISTINCT Giornata
+        FROM Partite
+        WHERE IDEdizioneCompetizione = :idEdizioneCompetizione
+          AND Giornata IS NOT NULL
+        ORDER BY Giornata ASC
+    ");
+
+        $statement->execute([
+            'idEdizioneCompetizione' => $idEdizioneCompetizione,
+        ]);
+
+        $righe = $statement->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        return array_map('intval', $righe);
+    }
+
+    public function partitePerCompetizioneEIntervallo(int $idEdizioneCompetizione, int $giornataDa, int $giornataA): array
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        SELECT
+            p.ID,
+            p.IDSquadraCasa,
+            p.IDSquadraTrasferta,
+            p.GoalCasa,
+            p.GoalTrasferta,
+            p.Giornata,
+            p.Girone,
+            sc.Nome AS NomeSquadraCasa,
+            st.Nome AS NomeSquadraTrasferta
+        FROM Partite p
+        INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
+        INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta
+        WHERE p.IDEdizioneCompetizione = :idEdizioneCompetizione
+          AND p.Giornata BETWEEN :giornataDa AND :giornataA
+        ORDER BY p.Giornata ASC, p.ID ASC
+    ");
+
+        $statement->execute([
+            'idEdizioneCompetizione' => $idEdizioneCompetizione,
+            'giornataDa' => $giornataDa,
+            'giornataA' => $giornataA,
+        ]);
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
 }

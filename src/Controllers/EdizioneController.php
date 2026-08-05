@@ -11,6 +11,8 @@ use App\Models\Universo;
 use App\Models\Partita;
 use App\Services\CreazioneEdizioneService;
 use App\Services\CalendarioService;
+use App\Services\ClassificaService;
+use App\Services\SimulazioneService;
 
 class EdizioneController
 {
@@ -165,6 +167,33 @@ class EdizioneController
 
         $haGiocatoriEdizione = $this->edizioni->haGiocatoriEdizione($idEdizione);
         $roseComplete = $haGiocatoriEdizione ? $this->edizioni->tutteLeRoseComplete($idEdizione) : true;
+
+        $squadreEdizione = $this->edizioni->squadreEdizione($idEdizione);
+        $competizioni = $this->edizioni->competizioniEdizione($idEdizione);
+
+        $squadreCoperte = [];
+        foreach ($competizioni as $competizione) {
+            $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
+            $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
+
+            foreach ($squadreIscritte as $squadraIscritta) {
+                $idSquadra = (int) ($squadraIscritta['IDSquadra'] ?? 0);
+                if ($idSquadra > 0) {
+                    $squadreCoperte[$idSquadra] = true;
+                }
+            }
+        }
+
+        $competizioniComplete = true;
+        foreach ($squadreEdizione as $squadraEdizione) {
+            $idSquadra = (int) ($squadraEdizione['IDSquadra'] ?? 0);
+            if ($idSquadra > 0 && !isset($squadreCoperte[$idSquadra])) {
+                $competizioniComplete = false;
+                break;
+            }
+        }
+
+        $puoFinalizzare = $roseComplete && $competizioniComplete;
 
         require __DIR__ . '/../Views/edizioni/show.php';
     }
@@ -549,7 +578,7 @@ class EdizioneController
             return;
         }
 
-        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni');
         exit;
     }
 
@@ -720,6 +749,16 @@ class EdizioneController
 
         $partitePerGiornata = $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 
+        $simulazione = new SimulazioneService();
+
+        foreach ($partitePerGiornata as $giornata => $partite) {
+            foreach ($partite as $indice => $partita) {
+                $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
+
+                $partitePerGiornata[$giornata][$indice]['PreviewSimulazione'] = $preview;
+            }
+        }
+
         require __DIR__ . '/../Views/edizioni/competizioni/show.php';
     }
 
@@ -769,5 +808,47 @@ class EdizioneController
         $verificaRosa = $this->edizioni->verificaRosaSquadra($idEdizione, $idSquadra);
 
         require __DIR__ . '/../Views/edizioni/rose/show.php';
+    }
+
+    public function classificaCompetizione(Request $request, array $params): void
+    {
+        $idUniverso = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        $universo = $this->universi->find($idUniverso);
+        $edizione = $this->edizioni->find($idEdizione);
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if (!$universo || !$edizione || !$competizione) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
+            return;
+        }
+
+        if ((int) ($competizione['IDEdizione'] ?? 0) !== $idEdizione) {
+            http_response_code(404);
+            echo 'Competizione non trovata per questa edizione';
+            return;
+        }
+
+        $giornate = $this->partite->giornatePerCompetizione($idEdizioneCompetizione);
+        $giornataDa = (int) ($request->query['giornata_da'] ?? min($giornate));
+        $giornataA = (int) ($request->query['giornata_a'] ?? max($giornate));
+
+        $struttura = json_decode((string) ($competizione['Struttura'] ?? '{}'), true);
+        if (!is_array($struttura)) {
+            $struttura = [];
+        }
+
+        $classificaService = new ClassificaService();
+        $datiClassifica = $classificaService->calcolaPerCompetizione(
+            $idEdizioneCompetizione,
+            $giornataDa,
+            $giornataA,
+            $struttura
+        );
+
+        require __DIR__ . '/../Views/edizioni/competizioni/classifica.php';
     }
 }

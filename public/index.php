@@ -121,8 +121,10 @@ $router->post('/universi/{id}/edizioni/{idEdizione}/rose/{idSquadra}', [Edizione
 
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni', [EdizioneController::class, 'competizioniIndex']);
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'showCompetizione']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'competizioniUpdate']);
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/edit', [EdizioneController::class, 'competizioniEdit']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/edit', [EdizioneController::class, 'competizioniUpdate']);
+$router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/classifica', [EdizioneController::class, 'classificaCompetizione']);
 
 /*
 |--------------------------------------------------------------------------

@@ -320,13 +320,13 @@ class CompetizioneController
                 }
 
                 if ($fase['tipo'] === 'gironi') {
+                    $vecchiDati['gironi_livello'] = $fase['livello'] ?? '';
                     $vecchiDati['gironi_giri'] = $fase['giri'] ?? 1;
                     $vecchiDati['gironi_numero'] = $fase['numero_gironi'] ?? 4;
                 }
 
                 if ($fase['tipo'] === 'campionato') {
                     $vecchiDati['lega_livello'] = $fase['livello'] ?? '';
-                    $vecchiDati['lega_girone'] = $fase['girone'] ?? '';
                     $vecchiDati['lega_giri'] = $fase['giri'] ?? 2;
                 }
 
@@ -337,10 +337,10 @@ class CompetizioneController
                 }
             }
         } else {
+            $vecchiDati['gironi_livello'] = $struttura['livello'] ?? '';
             $vecchiDati['gironi_giri'] = $struttura['giri'] ?? 1;
             $vecchiDati['gironi_numero'] = $struttura['numero_gironi'] ?? 4;
             $vecchiDati['lega_livello'] = $struttura['livello'] ?? '';
-            $vecchiDati['lega_girone'] = $struttura['girone'] ?? '';
             $vecchiDati['lega_giri'] = $struttura['giri'] ?? 2;
             $vecchiDati['elim_giri'] = $struttura['giri'] ?? 1;
             $vecchiDati['elim_finale_secca'] = $struttura['finale_secca'] ?? 1;
