@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /** @var array $universo */
 /** @var array $edizione */
 /** @var array $competizione */
@@ -15,271 +17,389 @@ $giornate = $giornate ?? [];
 $giornataDa = isset($giornataDa) ? (int) $giornataDa : (!empty($giornate) ? (int) min($giornate) : 1);
 $giornataA = isset($giornataA) ? (int) $giornataA : (!empty($giornate) ? (int) max($giornate) : $giornataDa);
 $tabAttiva = (string) ($tabAttiva ?? 'generale');
-
-$visteClassifica = $visteClassifica ?? [];
 $datiClassifica = $datiClassifica ?? [];
 $tabellaCapolista = $tabellaCapolista ?? [];
+$visteClassifica = $visteClassifica ?? ['generale' => $datiClassifica];
 
 $struttura = json_decode((string) ($competizione['Struttura'] ?? '{}'), true);
 if (!is_array($struttura)) {
     $struttura = [];
 }
 
-$numeroGiri = (int) ($struttura['giri'] ?? 0);
-
-$tabs = [
+$tabsDisponibili = [
     'generale' => 'Generale',
     'casa' => 'Casa',
     'trasferta' => 'Trasferta',
 ];
 
+$numeroGiri = (int) ($struttura['giri'] ?? 0);
 for ($i = 1; $i <= $numeroGiri; $i++) {
-    $tabs['giro_' . $i] = 'Giro ' . $i;
+    $tabsDisponibili['giro_' . $i] = 'Giro ' . $i;
 }
 
-if (empty($visteClassifica)) {
-    $visteClassifica = [
-        'generale' => $datiClassifica,
-    ];
+$tabs = [];
+foreach ($tabsDisponibili as $chiave => $label) {
+    if (array_key_exists($chiave, $visteClassifica)) {
+        $tabs[$chiave] = $label;
+    }
 }
 
-if (!isset($visteClassifica[$tabAttiva])) {
-    $chiavi = array_keys($visteClassifica);
-    $tabAttiva = $chiavi[0] ?? 'generale';
+if (!isset($tabs[$tabAttiva])) {
+    $tabAttiva = array_key_first($tabs) ?? 'generale';
 }
 
-$righeClassifica = $visteClassifica[$tabAttiva] ?? [];
+$righe = $visteClassifica[$tabAttiva] ?? [];
 
-function badgeFormaClass(string $esito): string
+function uc_view_badge_class(string $esito): string
 {
     return match ($esito) {
         'V' => 'success',
-        'N' => 'warning',
+        'N' => 'warning text-dark',
         'P' => 'danger',
         default => 'secondary',
     };
 }
+
+function uc_nome_competizione(array $competizione): string
+{
+    return (string) (
+        $competizione['NomeCompetizione']
+        ?? $competizione['Nome']
+        ?? $competizione['Titolo']
+        ?? 'Competizione'
+    );
+}
 ?>
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Classifica · <?= htmlspecialchars((string) ($competizione['NomeCompetizione'] ?? $competizione['Nome'] ?? 'Competizione')) ?></title>
+    <title>Classifica · <?= htmlspecialchars(uc_nome_competizione($competizione)) ?></title>
     <?php require __DIR__ . '/../../partials/link.php'; ?>
+    <style>
+        .uc-page-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .uc-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+
+        .uc-forma {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: .25rem;
+        }
+
+        .uc-forma .badge {
+            min-width: 2rem;
+            text-align: center;
+        }
+
+        .uc-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .5rem .75rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.04);
+            font-size: .95rem;
+        }
+
+        .uc-card-title {
+            margin-bottom: .25rem;
+        }
+
+        .uc-card-subtitle {
+            color: #6c757d;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 767.98px) {
+
+            .uc-responsive-table th,
+            .uc-responsive-table td {
+                white-space: nowrap;
+            }
+        }
+    </style>
 </head>
+
 <body>
     <div class="container py-4">
-        <div class="mx-auto">
-            <div class="mb-4">
+        <div class="uc-page-header mb-4">
+            <div>
                 <a
                     href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= (int) ($competizione['ID'] ?? 0) ?>"
-                    class="link-secondary text-decoration-none d-inline-block mb-2"
-                >
+                    class="text-decoration-none d-inline-block mb-2">
                     ← Torna alla competizione
                 </a>
 
-                <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3">
-                    <div>
-                        <h1 class="h2 mb-1">Classifica</h1>
-                        <p class="text-muted mb-0">
-                            <?= htmlspecialchars((string) ($competizione['NomeCompetizione'] ?? $competizione['Nome'] ?? 'Competizione')) ?>
-                            · <?= htmlspecialchars((string) ($edizione['Nome'] ?? 'Edizione')) ?>
-                        </p>
+                <h1 class="h2 mb-1">Classifica</h1>
+                <p class="text-muted mb-0">
+                    <?= htmlspecialchars(uc_nome_competizione($competizione)) ?>
+                    <?php if (!empty($edizione['Nome'])): ?>
+                        · <?= htmlspecialchars((string) $edizione['Nome']) ?>
+                    <?php endif; ?>
+                </p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-start">
+                <span class="uc-stat-pill">
+                    <strong>Intervallo</strong>
+                    <span><?= (int) $giornataDa ?> - <?= (int) $giornataA ?></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label for="giornata_da" class="form-label">Da giornata</label>
+                        <select name="giornata_da" id="giornata_da" class="form-select">
+                            <?php foreach ($giornate as $giornata): ?>
+                                <option value="<?= (int) $giornata ?>" <?= (int) $giornata === $giornataDa ? 'selected' : '' ?>>
+                                    <?= (int) $giornata ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="col-12 col-md-3">
+                        <label for="giornata_a" class="form-label">A giornata</label>
+                        <select name="giornata_a" id="giornata_a" class="form-select">
+                            <?php foreach ($giornate as $giornata): ?>
+                                <option value="<?= (int) $giornata ?>" <?= (int) $giornata === $giornataA ? 'selected' : '' ?>>
+                                    <?= (int) $giornata ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label for="tab" class="form-label">Vista</label>
+                        <select name="tab" id="tab" class="form-select">
+                            <?php foreach ($tabs as $chiave => $label): ?>
+                                <option value="<?= htmlspecialchars($chiave) ?>" <?= $chiave === $tabAttiva ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($label) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">Applica</button>
                         <a
-                            href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= (int) ($competizione['ID'] ?? 0) ?>"
-                            class="btn btn-outline-secondary"
-                        >
-                            Calendario
+                            href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= (int) ($competizione['ID'] ?? 0) ?>/classifica"
+                            class="btn btn-outline-secondary w-100">
+                            Reset
                         </a>
                     </div>
-                </div>
+                </form>
             </div>
+        </div>
 
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-                    <form method="get" class="row g-3 align-items-end">
-                        <div class="col-12 col-md-4">
-                            <label for="giornata_da" class="form-label">Da giornata</label>
-                            <select name="giornata_da" id="giornata_da" class="form-select">
-                                <?php foreach ($giornate as $giornata): ?>
-                                    <option value="<?= (int) $giornata ?>" <?= (int) $giornata === $giornataDa ? 'selected' : '' ?>>
-                                        <?= (int) $giornata ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <label for="giornata_a" class="form-label">A giornata</label>
-                            <select name="giornata_a" id="giornata_a" class="form-select">
-                                <?php foreach ($giornate as $giornata): ?>
-                                    <option value="<?= (int) $giornata ?>" <?= (int) $giornata === $giornataA ? 'selected' : '' ?>>
-                                        <?= (int) $giornata ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <label for="tab" class="form-label">Vista</label>
-                            <select name="tab" id="tab" class="form-select">
-                                <?php foreach ($tabs as $chiaveTab => $etichettaTab): ?>
-                                    <?php if (!array_key_exists($chiaveTab, $visteClassifica)) continue; ?>
-                                    <option value="<?= htmlspecialchars($chiaveTab) ?>" <?= $chiaveTab === $tabAttiva ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($etichettaTab) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="col-12 d-flex flex-wrap gap-2">
-                            <button type="submit" class="btn btn-primary">Aggiorna classifica</button>
-
-                            <a
-                                href="/universi/<?= (int) ($universo['ID'] ?? 0) ?>/edizioni/<?= (int) ($edizione['ID'] ?? 0) ?>/competizioni/<?= (int) ($competizione['ID'] ?? 0) ?>/classifica"
-                                class="btn btn-outline-secondary"
-                            >
-                                Reset filtri
-                            </a>
-                        </div>
-                    </form>
-                </div>
+        <?php if (!empty($tabs)): ?>
+            <div class="uc-tabs mb-4">
+                <?php foreach ($tabs as $chiave => $label): ?>
+                    <a
+                        href="?giornata_da=<?= (int) $giornataDa ?>&giornata_a=<?= (int) $giornataA ?>&tab=<?= urlencode($chiave) ?>"
+                        class="btn <?= $chiave === $tabAttiva ? 'btn-primary' : 'btn-outline-primary' ?>">
+                        <?= htmlspecialchars($label) ?>
+                    </a>
+                <?php endforeach; ?>
             </div>
+        <?php endif; ?>
 
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                        <div>
-                            <h2 class="h5 mb-1">Vista classifica</h2>
-                            <p class="text-muted mb-0">
-                                Intervallo selezionato: dalla giornata <?= (int) $giornataDa ?> alla giornata <?= (int) $giornataA ?>.
-                            </p>
-                        </div>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="mb-3">
+                    <h2 class="h5 uc-card-title">Tabella</h2>
+                    <p class="uc-card-subtitle">
+                        Vista attiva:
+                        <strong><?= htmlspecialchars($tabs[$tabAttiva] ?? 'Generale') ?></strong>
+                    </p>
+                </div>
 
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php foreach ($tabs as $chiaveTab => $etichettaTab): ?>
-                                <?php if (!array_key_exists($chiaveTab, $visteClassifica)) continue; ?>
-                                <a
-                                    href="?giornata_da=<?= (int) $giornataDa ?>&giornata_a=<?= (int) $giornataA ?>&tab=<?= urlencode($chiaveTab) ?>"
-                                    class="btn <?= $chiaveTab === $tabAttiva ? 'btn-primary' : 'btn-outline-primary' ?>"
-                                >
-                                    <?= htmlspecialchars($etichettaTab) ?>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
+                <?php if (empty($righe)): ?>
+                    <div class="alert alert-info mb-0">
+                        Nessun dato disponibile per i filtri selezionati.
                     </div>
-
-                    <?php if (empty($righeClassifica)): ?>
-                        <div class="alert alert-info mb-0">
-                            Nessun dato disponibile per l’intervallo selezionato.
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-striped align-middle mb-0">
-                                <thead>
+                <?php else: ?>
+                    <div class="table-responsive uc-responsive-table">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Squadra</th>
+                                    <th class="text-center">G</th>
+                                    <th class="text-center">V</th>
+                                    <th class="text-center">N</th>
+                                    <th class="text-center">P</th>
+                                    <th class="text-center">GF</th>
+                                    <th class="text-center">GS</th>
+                                    <th class="text-center">DR</th>
+                                    <th class="text-center">Pt</th>
+                                    <th>Forma</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($righe as $indice => $riga): ?>
+                                    <?php
+                                    $forma = $riga['Forma'] ?? [];
+                                    if (is_string($forma)) {
+                                        $forma = preg_split('//u', $forma, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                                    }
+                                    ?>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Squadra</th>
-                                        <th class="text-center">G</th>
-                                        <th class="text-center">V</th>
-                                        <th class="text-center">N</th>
-                                        <th class="text-center">P</th>
-                                        <th class="text-center">GF</th>
-                                        <th class="text-center">GS</th>
-                                        <th class="text-center">DR</th>
-                                        <th class="text-center">Pt</th>
-                                        <th>Forma</th>
+                                        <td class="fw-semibold"><?= (int) ($riga['Posizione'] ?? ($indice + 1)) ?></td>
+                                        <td class="fw-semibold"><?= htmlspecialchars((string) ($riga['Nome'] ?? '')) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Giocate'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Vinte'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Pareggiate'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Perse'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Fatti'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['Subiti'] ?? 0) ?></td>
+                                        <td class="text-center"><?= (int) ($riga['DifferenzaReti'] ?? 0) ?></td>
+                                        <td class="text-center fw-bold"><?= (int) ($riga['Punti'] ?? 0) ?></td>
+                                        <td>
+                                            <div class="uc-forma">
+                                                <?php if (empty($forma)): ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php else: ?>
+                                                    <?php foreach ($forma as $esito): ?>
+                                                        <span class="badge bg-<?= uc_view_badge_class((string) $esito) ?>">
+                                                            <?= htmlspecialchars((string) $esito) ?>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($righeClassifica as $indice => $riga): ?>
-                                        <?php
-                                        $forma = $riga['Forma'] ?? [];
-                                        if (is_string($forma)) {
-                                            $forma = preg_split('//u', $forma, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                                        }
-                                        ?>
-                                        <tr>
-                                            <td class="fw-semibold"><?= (int) ($riga['Posizione'] ?? ($indice + 1)) ?></td>
-                                            <td><?= htmlspecialchars((string) ($riga['Nome'] ?? '')) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Giocate'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Vinte'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Pareggiate'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Perse'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Fatti'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['Subiti'] ?? 0) ?></td>
-                                            <td class="text-center"><?= (int) ($riga['DifferenzaReti'] ?? 0) ?></td>
-                                            <td class="text-center fw-bold"><?= (int) ($riga['Punti'] ?? 0) ?></td>
-                                            <td>
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <?php if (empty($forma)): ?>
-                                                        <span class="text-muted small">—</span>
-                                                    <?php else: ?>
-                                                        <?php foreach ($forma as $esito): ?>
-                                                            <span class="badge text-bg-<?= badgeFormaClass((string) $esito) ?>">
-                                                                <?= htmlspecialchars((string) $esito) ?>
-                                                            </span>
-                                                        <?php endforeach; ?>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <h2 class="h5 mb-1">Capolista per giornata</h2>
-                        <p class="text-muted mb-0">
-                            Evoluzione della vetta della classifica lungo il campionato.
-                        </p>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
+                <?php endif; ?>
+            </div>
+        </div>
 
-                    <?php if (empty($tabellaCapolista)): ?>
-                        <div class="alert alert-light mb-0">
-                            La tabella capolista non è ancora disponibile.
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Giornata</th>
-                                        <th>Capolista</th>
-                                        <th class="text-center">Punti</th>
-                                        <th class="text-center">Vantaggio</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($tabellaCapolista as $rigaCapolista): ?>
-                                        <tr>
-                                            <td><?= (int) ($rigaCapolista['Giornata'] ?? 0) ?></td>
-                                            <td><?= htmlspecialchars((string) ($rigaCapolista['Capolista'] ?? '')) ?></td>
-                                            <td class="text-center"><?= (int) ($rigaCapolista['Punti'] ?? 0) ?></td>
-                                            <td class="text-center">
-                                                <?= isset($rigaCapolista['Vantaggio']) ? (int) $rigaCapolista['Vantaggio'] : 0 ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
+        <?php
+        $segmentiCapolista = [];
+
+        if (!empty($tabellaCapolista)) {
+            $corrente = null;
+
+            foreach ($tabellaCapolista as $rigaCapo) {
+                $label = (string) (($rigaCapo['NomeBreve'] ?? '') ?: ($rigaCapo['Capolista'] ?? '-'));
+                $idSquadra = $rigaCapo['IDSquadra'] ?? null;
+                $giornata = (int) ($rigaCapo['Giornata'] ?? 0);
+                $pariInTesta = (bool) ($rigaCapo['PariInTesta'] ?? false);
+                $colori = $rigaCapo['Colori'] ?? [];
+
+                $chiave = $pariInTesta ? 'pari' : ('squadra_' . (string) $idSquadra);
+
+                if ($corrente === null) {
+                    $corrente = [
+                        'chiave' => $chiave,
+                        'label' => $label,
+                        'giornata_inizio' => $giornata,
+                        'giornata_fine' => $giornata,
+                        'colspan' => 1,
+                        'pari' => $pariInTesta,
+                        'colori' => $colori,
+                    ];
+                    continue;
+                }
+
+                if ($corrente['chiave'] === $chiave) {
+                    $corrente['giornata_fine'] = $giornata;
+                    $corrente['colspan']++;
+                    continue;
+                }
+
+                $segmentiCapolista[] = $corrente;
+
+                $corrente = [
+                    'chiave' => $chiave,
+                    'label' => $label,
+                    'giornata_inizio' => $giornata,
+                    'giornata_fine' => $giornata,
+                    'colspan' => 1,
+                    'pari' => $pariInTesta,
+                    'colori' => $colori,
+                ];
+            }
+
+            if ($corrente !== null) {
+                $segmentiCapolista[] = $corrente;
+            }
+        }
+        ?>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-body">
+                <div class="mb-3">
+                    <h2 class="h5 uc-card-title">Capolista per giornata</h2>
+                    <p class="uc-card-subtitle">
+                        Sequenza della vetta: quando la stessa squadra resta prima per più giornate, il blocco viene unito.
+                    </p>
                 </div>
+
+                <?php if (empty($tabellaCapolista)): ?>
+                    <div class="alert alert-light mb-0">
+                        Nessuna progressione disponibile.
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <?php foreach ($tabellaCapolista as $rigaCapo): ?>
+                                        <th class="text-center">
+                                            <?= (int) ($rigaCapo['Giornata'] ?? 0) ?>
+                                        </th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <?php foreach ($segmentiCapolista as $segmento): ?>
+                                        <td class="text-center" colspan="<?= (int) $segmento['colspan'] ?>">
+                                            <?php if ($segmento['pari']): ?>
+                                                <span class="fw-semibold text-muted">-</span>
+                                            <?php else: ?>
+                                                <?php
+                                                $bg = (string) ($segmento['colori']['sfondo'] ?? '#6c757d');
+                                                $fg = (string) ($segmento['colori']['testo'] ?? '#ffffff');
+                                                $bd = (string) ($segmento['colori']['bordo'] ?? $bg);
+                                                ?>
+                                                <span
+                                                    class="d-inline-block px-3 py-2 rounded fw-semibold"
+                                                    style="background-color: <?= htmlspecialchars($bg) ?>; color: <?= htmlspecialchars($fg) ?>; border: 2px solid <?= htmlspecialchars($bd) ?>; min-width: 72px;">
+                                                    <?= htmlspecialchars((string) $segmento['label']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
     <?php require __DIR__ . '/../../partials/script.php'; ?>
 </body>
+
 </html>

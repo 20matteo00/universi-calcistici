@@ -833,19 +833,47 @@ class EdizioneController
         }
 
         $giornate = $this->partite->giornatePerCompetizione($idEdizioneCompetizione);
-        $giornataDa = (int) ($request->query['giornata_da'] ?? min($giornate));
-        $giornataA = (int) ($request->query['giornata_a'] ?? max($giornate));
+
+        if (empty($giornate)) {
+            $giornate = [1];
+        }
+
+        $giornataMin = (int) min($giornate);
+        $giornataMax = (int) max($giornate);
+
+        $giornataDa = (int) ($request->query['giornata_da'] ?? $giornataMin);
+        $giornataA = (int) ($request->query['giornata_a'] ?? $giornataMax);
+        $tabAttiva = (string) ($request->query['tab'] ?? 'generale');
+
+        if ($giornataDa < $giornataMin) {
+            $giornataDa = $giornataMin;
+        }
+
+        if ($giornataA > $giornataMax) {
+            $giornataA = $giornataMax;
+        }
+
+        if ($giornataDa > $giornataA) {
+            [$giornataDa, $giornataA] = [$giornataA, $giornataDa];
+        }
 
         $struttura = json_decode((string) ($competizione['Struttura'] ?? '{}'), true);
         if (!is_array($struttura)) {
             $struttura = [];
         }
 
-        $classificaService = new ClassificaService();
-        $datiClassifica = $classificaService->calcolaPerCompetizione(
+        $classificaService = new \App\Services\ClassificaService();
+
+        $visteClassifica = $classificaService->calcolaVisteCompetizione(
             $idEdizioneCompetizione,
             $giornataDa,
             $giornataA,
+            $struttura
+        );
+
+        $datiClassifica = $visteClassifica['generale'] ?? [];
+        $tabellaCapolista = $classificaService->calcolaTabellaCapolista(
+            $idEdizioneCompetizione,
             $struttura
         );
 

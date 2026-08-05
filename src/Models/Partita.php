@@ -206,7 +206,8 @@ class Partita
             'idEdizioneCompetizione' => $idEdizioneCompetizione,
         ]);
 
-        $righe = $statement->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $righe = $statement->fetchAll(\PDO::FETCH_COLUMN) ?: [];
+
         return array_map('intval', $righe);
     }
 
@@ -217,14 +218,18 @@ class Partita
         $statement = $pdo->prepare("
         SELECT
             p.ID,
+            p.IDEdizioneCompetizione,
             p.IDSquadraCasa,
             p.IDSquadraTrasferta,
             p.GoalCasa,
             p.GoalTrasferta,
             p.Giornata,
             p.Girone,
+            p.Dettagli,
             sc.Nome AS NomeSquadraCasa,
-            st.Nome AS NomeSquadraTrasferta
+            sc.Colori AS ColoriSquadraCasa,
+            st.Nome AS NomeSquadraTrasferta,
+            st.Colori AS ColoriSquadraTrasferta
         FROM Partite p
         INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
         INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta
@@ -239,6 +244,6 @@ class Partita
             'giornataA' => $giornataA,
         ]);
 
-        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        return $statement->fetchAll(\PDO::FETCH_ASSOC) ?: [];
     }
 }

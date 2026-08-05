@@ -12,6 +12,23 @@ class ClassificaService
         int $idEdizioneCompetizione,
         int $giornataDa,
         int $giornataA,
+        array $struttura = [],
+        ?string $filtro = null
+    ): array {
+        $partitaModel = new Partita();
+        $partite = $partitaModel->partitePerCompetizioneEIntervallo(
+            $idEdizioneCompetizione,
+            $giornataDa,
+            $giornataA
+        );
+
+        return $this->calcolaClassificaDaPartite($partite, $struttura, $filtro);
+    }
+
+    public function calcolaVisteCompetizione(
+        int $idEdizioneCompetizione,
+        int $giornataDa,
+        int $giornataA,
         array $struttura = []
     ): array {
         $partitaModel = new Partita();
@@ -21,6 +38,147 @@ class ClassificaService
             $giornataA
         );
 
+        $viste = [
+            'generale' => $this->calcolaClassificaDaPartite($partite, $struttura, null),
+            'casa' => $this->calcolaClassificaDaPartite($partite, $struttura, 'casa'),
+            'trasferta' => $this->calcolaClassificaDaPartite($partite, $struttura, 'trasferta'),
+        ];
+
+        $numeroGiri = (int) ($struttura['giri'] ?? 0);
+        if ($numeroGiri > 0) {
+            $partitePerGiro = $this->raggruppaPartitePerGiro($partite, $numeroGiri);
+
+            foreach ($partitePerGiro as $numeroGiro => $partiteGiro) {
+                $viste['giro_' . $numeroGiro] = $this->calcolaClassificaDaPartite($partiteGiro, $struttura, null);
+            }
+        }
+
+        return $viste;
+    }
+
+    public function calcolaTabellaCapolista(
+        int $idEdizioneCompetizione,
+        array $struttura = []
+    ): array {
+        $partitaModel = new Partita();
+        $giornate = $partitaModel->giornatePerCompetizione($idEdizioneCompetizione);
+
+        if (empty($giornate)) {
+            return [];
+        }
+
+        $giornataMin = (int) min($giornate);
+        $ultimaGiornata = (int) max($giornate);
+
+        $tutteLePartite = $partitaModel->partitePerCompetizioneEIntervallo(
+            $idEdizioneCompetizione,
+            $giornataMin,
+            $ultimaGiornata
+        );
+
+        $mappaSquadre = $this->creaMappaSquadre($tutteLePartite);
+
+        $tabella = [];
+
+        foreach ($giornate as $giornata) {
+            $partiteFinoAQui = array_values(array_filter(
+                $tutteLePartite,
+                static fn(array $partita): bool => (int) ($partita['Giornata'] ?? 0) <= (int) $giornata
+            ));
+
+            $classifica = $this->calcolaClassificaDaPartite($partiteFinoAQui, $struttura, null);
+
+            if (empty($classifica)) {
+                continue;
+            }
+
+            $prima = $classifica[0];
+            $seconda = $classifica[1] ?? null;
+
+            $pariInTesta = $seconda && ((int) $prima['Punti'] === (int) $seconda['Punti']);
+
+            $idSquadra = $pariInTesta ? null : (int) ($prima['IDSquadra'] ?? 0);
+            $squadraInfo = ($idSquadra && isset($mappaSquadre[$idSquadra])) ? $mappaSquadre[$idSquadra] : [];
+
+            $tabella[] = [
+                'Giornata' => (int) $giornata,
+                'Capolista' => $pariInTesta ? '-' : (string) ($prima['Nome'] ?? ''),
+                'IDSquadra' => $idSquadra,
+                'PariInTesta' => $pariInTesta,
+                'Punti' => (int) ($prima['Punti'] ?? 0),
+                'Colori' => $pariInTesta ? [] : ($squadraInfo['Colori'] ?? []),
+                'NomeBreve' => $pariInTesta ? '-' : (string) ($squadraInfo['NomeBreve'] ?? $prima['Nome'] ?? ''),
+            ];
+        }
+
+        return $tabella;
+    }
+
+    private function creaMappaSquadre(array $partite): array
+    {
+        $mappa = [];
+
+        foreach ($partite as $partita) {
+            $idCasa = (int) ($partita['IDSquadraCasa'] ?? 0);
+            if ($idCasa > 0 && !isset($mappa[$idCasa])) {
+                $mappa[$idCasa] = [
+                    'ID' => $idCasa,
+                    'Nome' => (string) ($partita['NomeSquadraCasa'] ?? ''),
+                    'NomeBreve' => $this->abbreviaNomeSquadra((string) ($partita['NomeSquadraCasa'] ?? '')),
+                    'Colori' => $this->decodificaColori((string) ($partita['ColoriSquadraCasa'] ?? '{}')),
+                ];
+            }
+
+            $idTrasferta = (int) ($partita['IDSquadraTrasferta'] ?? 0);
+            if ($idTrasferta > 0 && !isset($mappa[$idTrasferta])) {
+                $mappa[$idTrasferta] = [
+                    'ID' => $idTrasferta,
+                    'Nome' => (string) ($partita['NomeSquadraTrasferta'] ?? ''),
+                    'NomeBreve' => $this->abbreviaNomeSquadra((string) ($partita['NomeSquadraTrasferta'] ?? '')),
+                    'Colori' => $this->decodificaColori((string) ($partita['ColoriSquadraTrasferta'] ?? '{}')),
+                ];
+            }
+        }
+
+        return $mappa;
+    }
+
+    private function decodificaColori(string $json): array
+    {
+        $colori = json_decode($json, true);
+        if (!is_array($colori)) {
+            $colori = [];
+        }
+
+        return [
+            'sfondo' => (string) ($colori['sfondo'] ?? '#6c757d'),
+            'testo' => (string) ($colori['testo'] ?? '#ffffff'),
+            'bordo' => (string) ($colori['bordo'] ?? '#6c757d'),
+        ];
+    }
+
+    private function abbreviaNomeSquadra(string $nome): string
+    {
+        $nome = trim($nome);
+        if ($nome === '') {
+            return '';
+        }
+
+        $parole = preg_split('/\s+/', $nome) ?: [];
+        if (count($parole) === 1) {
+            return mb_substr($parole[0], 0, 3);
+        }
+
+        $sigla = '';
+        foreach ($parole as $parola) {
+            $sigla .= mb_substr($parola, 0, 1);
+        }
+
+        return mb_substr($sigla, 0, 3);
+    }
+
+    private function calcolaClassificaDaPartite(array $partite, array $struttura = [], ?string $filtro = null): array
+    {
         $puntiVittoria = (int) ($struttura['punti']['vittoria'] ?? 3);
         $puntiPareggio = (int) ($struttura['punti']['pareggio'] ?? 1);
         $puntiSconfitta = (int) ($struttura['punti']['sconfitta'] ?? 0);
@@ -41,6 +199,32 @@ class ClassificaService
             $idTrasferta = (int) $partita['IDSquadraTrasferta'];
             $goalCasa = (int) $partita['GoalCasa'];
             $goalTrasferta = (int) $partita['GoalTrasferta'];
+
+            if ($filtro === 'casa') {
+                $this->inizializzaSquadra($classifica, $idCasa, (string) $partita['NomeSquadraCasa']);
+                $this->aggiornaSquadra(
+                    $classifica[$idCasa],
+                    $goalCasa,
+                    $goalTrasferta,
+                    $puntiVittoria,
+                    $puntiPareggio,
+                    $puntiSconfitta
+                );
+                continue;
+            }
+
+            if ($filtro === 'trasferta') {
+                $this->inizializzaSquadra($classifica, $idTrasferta, (string) $partita['NomeSquadraTrasferta']);
+                $this->aggiornaSquadra(
+                    $classifica[$idTrasferta],
+                    $goalTrasferta,
+                    $goalCasa,
+                    $puntiVittoria,
+                    $puntiPareggio,
+                    $puntiSconfitta
+                );
+                continue;
+            }
 
             $this->inizializzaSquadra($classifica, $idCasa, (string) $partita['NomeSquadraCasa']);
             $this->inizializzaSquadra($classifica, $idTrasferta, (string) $partita['NomeSquadraTrasferta']);
@@ -91,6 +275,74 @@ class ClassificaService
         unset($riga);
 
         return $classifica;
+    }
+
+    private function raggruppaPartitePerGiro(array $partite, int $numeroGiri): array
+    {
+        $partitePerGiro = [];
+        $trovatoAlmenoUnGiro = false;
+
+        foreach ($partite as $partita) {
+            $dettagli = json_decode((string) ($partita['Dettagli'] ?? '{}'), true);
+            if (!is_array($dettagli)) {
+                $dettagli = [];
+            }
+
+            $giro = (int) ($dettagli['giro'] ?? 0);
+
+            if ($giro > 0) {
+                $trovatoAlmenoUnGiro = true;
+                $partitePerGiro[$giro] ??= [];
+                $partitePerGiro[$giro][] = $partita;
+            }
+        }
+
+        if ($trovatoAlmenoUnGiro) {
+            ksort($partitePerGiro);
+            return $partitePerGiro;
+        }
+
+        $giornate = [];
+
+        foreach ($partite as $partita) {
+            $giornata = (int) ($partita['Giornata'] ?? 0);
+            if ($giornata > 0) {
+                $giornate[$giornata] = true;
+            }
+        }
+
+        $totaleGiornate = count($giornate);
+        if ($totaleGiornate === 0 || $numeroGiri <= 0) {
+            return [];
+        }
+
+        ksort($giornate);
+        $giornateOrdinate = array_keys($giornate);
+        $giornatePerGiro = (int) ceil(count($giornateOrdinate) / $numeroGiri);
+
+        $mappaGiornataGiro = [];
+        foreach ($giornateOrdinate as $indice => $giornata) {
+            $giro = (int) floor($indice / $giornatePerGiro) + 1;
+            if ($giro > $numeroGiri) {
+                $giro = $numeroGiri;
+            }
+            $mappaGiornataGiro[(int) $giornata] = $giro;
+        }
+
+        foreach ($partite as $partita) {
+            $giornata = (int) ($partita['Giornata'] ?? 0);
+            if (!isset($mappaGiornataGiro[$giornata])) {
+                continue;
+            }
+
+            $giro = $mappaGiornataGiro[$giornata];
+            $partitePerGiro[$giro] ??= [];
+            $partitePerGiro[$giro][] = $partita;
+        }
+
+        ksort($partitePerGiro);
+
+        return $partitePerGiro;
     }
 
     private function inizializzaSquadra(array &$classifica, int $idSquadra, string $nome): void
