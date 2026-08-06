@@ -29,7 +29,8 @@ class ClassificaService
         int $idEdizioneCompetizione,
         int $giornataDa,
         int $giornataA,
-        array $struttura = []
+        array $struttura = [],
+        int $numeroGiri = 1
     ): array {
         $partitaModel = new Partita();
         $partite = $partitaModel->partitePerCompetizioneEIntervallo(
@@ -44,8 +45,9 @@ class ClassificaService
             'trasferta' => $this->calcolaClassificaDaPartite($partite, $struttura, 'trasferta'),
         ];
 
-        $numeroGiri = (int) ($struttura['giri'] ?? 0);
-        if ($numeroGiri > 0) {
+        $numeroGiri = max(1, $numeroGiri);
+
+        if ($numeroGiri > 1) {
             $partitePerGiro = $this->raggruppaPartitePerGiro($partite, $numeroGiri);
 
             foreach ($partitePerGiro as $numeroGiro => $partiteGiro) {

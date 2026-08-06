@@ -32,9 +32,11 @@ $tabsDisponibili = [
     'trasferta' => 'Trasferta',
 ];
 
-$numeroGiri = (int) ($struttura['giri'] ?? 0);
-for ($i = 1; $i <= $numeroGiri; $i++) {
-    $tabsDisponibili['giro_' . $i] = 'Giro ' . $i;
+$numeroGiri = max(1, (int) ($competizione['Giri'] ?? 1));
+if ($numeroGiri > 1) {
+    for ($i = 1; $i <= $numeroGiri; $i++) {
+        $tabsDisponibili['giro_' . $i] = 'Giro ' . $i;
+    }
 }
 
 $tabs = [];

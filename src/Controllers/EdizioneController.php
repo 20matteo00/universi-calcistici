@@ -978,13 +978,16 @@ class EdizioneController
             $struttura = [];
         }
 
+        $numeroGiri = max(1, (int) ($competizione['Giri'] ?? 1));
+
         $classificaService = new \App\Services\ClassificaService();
 
         $visteClassifica = $classificaService->calcolaVisteCompetizione(
             $idEdizioneCompetizione,
             $giornataDa,
             $giornataA,
-            $struttura
+            $struttura,
+            $numeroGiri
         );
 
         $datiClassifica = $visteClassifica['generale'] ?? [];
