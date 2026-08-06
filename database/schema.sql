@@ -248,15 +248,7 @@ CREATE TABLE PartitaEventi (
     -- NULL se l'universo non usa i giocatori
     IDSquadra INT UNSIGNED NOT NULL,
     -- squadra a cui va attribuito l'evento (punteggio/classifica)
-    Tipo ENUM(
-        'gol',
-        'autogol',
-        'rigore_segnato',
-        'rigore_sbagliato',
-        'ammonizione',
-        'espulsione',
-        'sostituzione'
-    ) NOT NULL,
+    Tipo ENUM('gol','rigore_sbagliato','ammonizione','espulsione') NOT NULL,
     Minuto TINYINT UNSIGNED NOT NULL,
     Dettagli JSON NULL,
     -- es. {"assist_id":IDGiocatore}, {"autogol_squadra_beneficio":IDSquadra},

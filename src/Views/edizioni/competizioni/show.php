@@ -399,6 +399,47 @@ function uc_style_squadra(?string $jsonColori): array
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    <?php $eventi = $partita['Eventi'] ?? []; ?>
+
+                                                    <?php if (!empty($eventi)): ?>
+                                                        <div class="text-muted text-uppercase small mb-1 text-center">Eventi</div>
+                                                        <div class="d-flex flex-column align-items-center">
+                                                            <?php foreach ($eventi as $evento): ?>
+                                                                <?php
+                                                                $tipo = (string) ($evento['Tipo'] ?? '');
+                                                                $minuto = (int) ($evento['Minuto'] ?? 0);
+                                                                $giocatore = trim((string) ($evento['NomeGiocatoreCompleto'] ?? ''));
+                                                                $dettagli = $evento['DettagliArray'] ?? [];
+
+                                                                $testo = match ($tipo) {
+                                                                    'gol' => 'Gol',
+                                                                    'rigore_sbagliato' => 'Rigore sbagliato',
+                                                                    'ammonizione' => 'Ammonizione',
+                                                                    'espulsione' => 'Espulsione',
+                                                                    default => ucfirst(str_replace('_', ' ', $tipo)),
+                                                                };
+
+                                                                if ($tipo === 'gol') {
+                                                                    if (!empty($dettagli['autogol'])) {
+                                                                        $testo = 'Autogol';
+                                                                    } elseif (!empty($dettagli['rigore'])) {
+                                                                        $testo = 'Gol su rigore';
+                                                                    } elseif (!empty($dettagli['assist_id'])) {
+                                                                        $testo = 'Gol con assist';
+                                                                    }
+                                                                }
+                                                                ?>
+                                                                <div class="py-1 small text-center">
+                                                                    <?= $minuto ?>′
+                                                                    <?= htmlspecialchars($testo) ?>
+                                                                    <?php if ($giocatore !== ''): ?>
+                                                                        -
+                                                                        <?= htmlspecialchars($giocatore) ?>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </div>
                                             </li>
                                         <?php endforeach; ?>

@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Config\Database;
 use App\Http\Request;
 use App\Models\Edizione;
 use App\Models\Partita;
 use App\Models\Universo;
+use App\Models\PartitaEvento;
+use App\Services\EventGeneratorService;
 use App\Services\SimulazioneService;
+
+use PDO;
 
 class PartitaController
 {
@@ -16,13 +21,18 @@ class PartitaController
     private Edizione $edizioni;
     private Partita $partite;
     private SimulazioneService $simulazione;
+    private EventGeneratorService $eventi;
 
     public function __construct()
     {
+        $pdo = Database::getConnessione();
+
         $this->universi = new Universo();
         $this->edizioni = new Edizione();
         $this->partite = new Partita();
         $this->simulazione = new SimulazioneService();
+
+        $this->eventi = new EventGeneratorService();
     }
 
     public function salvaRisultato(Request $request, array $params): void
@@ -312,6 +322,7 @@ class PartitaController
     private function simulaPartitaById(int $idPartita): void
     {
         $this->simulazione->simulaPartita($idPartita);
+        $this->eventi->rigeneraPerPartita($idPartita);
     }
 
     private function salvaRisultatoPartitaById(int $idPartita, mixed $goalCasaRaw, mixed $goalTrasfertaRaw): bool
@@ -342,12 +353,15 @@ class PartitaController
         }
 
         $this->partite->aggiornaRisultatoPartita($idPartita, $goalCasa, $goalTrasferta, 'giocata');
+        $this->eventi->rigeneraPerPartita($idPartita);
+
         return true;
     }
 
     private function resetPartitaById(int $idPartita): void
     {
         $this->partite->aggiornaRisultatoPartita($idPartita, null, null, 'programmata');
+        $this->eventi->cancellaPerPartita($idPartita);
     }
 
     private function validaContestoCompetizione(int $idUniverso, int $idEdizione, int $idEdizioneCompetizione): bool

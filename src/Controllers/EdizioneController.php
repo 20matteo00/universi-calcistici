@@ -9,6 +9,7 @@ use App\Http\Request;
 use App\Models\Edizione;
 use App\Models\Universo;
 use App\Models\Partita;
+use App\Models\PartitaEvento;
 use App\Services\CreazioneEdizioneService;
 use App\Services\CalendarioService;
 use App\Services\ClassificaService;
@@ -843,14 +844,17 @@ class EdizioneController
 
         $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
         $simulazione = new SimulazioneService();
+        $partitaEventi = new \App\Models\PartitaEvento();
 
         if ($tipoCompetizione === 'eliminazione_diretta') {
             $blocchiPartite = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
 
             foreach ($blocchiPartite as $chiave => $blocco) {
                 foreach ($blocco['partite'] as $indice => $partita) {
-                    $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
-                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $preview;
+                    $idPartita = (int) ($partita['ID'] ?? 0);
+
+                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $simulazione->calcolaPreviewPartita($idPartita);
+                    $blocchiPartite[$chiave]['partite'][$indice]['Eventi'] = $partitaEventi->findByPartita($idPartita);
                 }
             }
         } else {
@@ -859,6 +863,7 @@ class EdizioneController
 
             foreach ($partitePerGiornata as $giornata => $partite) {
                 $chiave = 'giornata-' . (int) $giornata;
+
                 $blocchiPartite[$chiave] = [
                     'chiave' => $chiave,
                     'anchor' => 'giornata-' . (int) $giornata,
@@ -869,8 +874,10 @@ class EdizioneController
                 ];
 
                 foreach ($blocchiPartite[$chiave]['partite'] as $indice => $partita) {
-                    $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
-                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $preview;
+                    $idPartita = (int) ($partita['ID'] ?? 0);
+
+                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $simulazione->calcolaPreviewPartita($idPartita);
+                    $blocchiPartite[$chiave]['partite'][$indice]['Eventi'] = $partitaEventi->findByPartita($idPartita);
                 }
             }
         }
