@@ -100,29 +100,31 @@ class Partita
         $pdo = Database::getConnessione();
 
         $statement = $pdo->prepare("
-            SELECT
-                p.ID,
-                p.IDEdizioneCompetizione,
-                p.IDSquadraCasa,
-                p.IDSquadraTrasferta,
-                p.GoalCasa,
-                p.GoalTrasferta,
-                p.Fase,
-                p.Giornata,
-                p.Girone,
-                p.Data,
-                p.Stato,
-                p.Dettagli,
-                p.Creato,
-                p.Modificato,
-                sc.Nome AS NomeSquadraCasa,
-                st.Nome AS NomeSquadraTrasferta
-            FROM Partite p
-            INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
-            INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta
-            WHERE p.IDEdizioneCompetizione = :idEdizioneCompetizione
-            ORDER BY p.Giornata ASC, p.ID ASC
-        ");
+        SELECT
+            p.ID,
+            p.IDEdizioneCompetizione,
+            p.IDSquadraCasa,
+            p.IDSquadraTrasferta,
+            p.GoalCasa,
+            p.GoalTrasferta,
+            p.Fase,
+            p.Giornata,
+            p.Girone,
+            p.Data,
+            p.Stato,
+            p.Dettagli,
+            p.Creato,
+            p.Modificato,
+            sc.Nome AS NomeSquadraCasa,
+            sc.Colori AS ColoriSquadraCasa,
+            st.Nome AS NomeSquadraTrasferta,
+            st.Colori AS ColoriSquadraTrasferta
+        FROM Partite p
+        INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
+        INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta
+        WHERE p.IDEdizioneCompetizione = :idEdizioneCompetizione
+        ORDER BY p.Giornata ASC, p.ID ASC
+    ");
 
         $statement->execute([
             'idEdizioneCompetizione' => $idEdizioneCompetizione,
@@ -279,7 +281,9 @@ class Partita
             p.Creato,
             p.Modificato,
             sc.Nome AS NomeSquadraCasa,
-            st.Nome AS NomeSquadraTrasferta
+            sc.Colori AS ColoriSquadraCasa,
+            st.Nome AS NomeSquadraTrasferta,
+            st.Colori AS ColoriSquadraTrasferta
         FROM Partite p
         INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
         INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta

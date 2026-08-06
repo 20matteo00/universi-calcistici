@@ -844,7 +844,7 @@ class EdizioneController
         $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
         $simulazione = new SimulazioneService();
 
-        if ($tipoCompetizione === 'eliminazione') {
+        if ($tipoCompetizione === 'eliminazione_diretta') {
             $blocchiPartite = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
 
             foreach ($blocchiPartite as $chiave => $blocco) {
