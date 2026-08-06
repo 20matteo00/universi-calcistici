@@ -1,11 +1,151 @@
-# Progetto: Universi Calcistici
+# Universi Calcistici
 
-## Cos'è
-App web per creare "universi calcistici" simulati: dentro ogni universo si creano Squadre e Giocatori (facoltativi), poi Competizioni di vario tipo (lega, eliminazione diretta) con le proprie regole (promozioni, retrocessioni, qualificazioni ad altre competizioni). Le Edizioni (stagioni) si susseguono nel tempo: la prima è configurata a mano, dalla seconda in poi il sistema deve poter auto-generare le squadre partecipanti in base alle regole di passaggio (`CompetizioneAvanzamento`) applicate ai risultati dell'edizione precedente.
+Applicazione web in PHP per creare e simulare universi calcistici personalizzati, con squadre, giocatori, stagioni, competizioni e regole di avanzamento tra edizioni.
 
-Stack: PHP (vanilla, no framework) + MySQL/MariaDB + JS/CSS/HTML, ambiente locale Laragon + HeidiSQL. Composer usato solo per autoload PSR-4 e per leggere il file `.env` (pacchetto `vlucas/phpdotenv`).
+## Indice
+
+- [Panoramica](#panoramica)
+- [Obiettivo del progetto](#obiettivo-del-progetto)
+- [Stack tecnico](#stack-tecnico)
+- [Stato attuale](#stato-attuale)
+- [Funzionalità disponibili](#funzionalità-disponibili)
+- [Funzionalità in corso o previste](#funzionalità-in-corso-o-previste)
+- [Architettura del progetto](#architettura-del-progetto)
+- [Struttura cartelle](#struttura-cartelle)
+- [Modello dati](#modello-dati)
+- [Regole e decisioni architetturali](#regole-e-decisioni-architetturali)
+- [Setup locale](#setup-locale)
+- [Flusso corretto di lavoro](#flusso-corretto-di-lavoro)
+- [Roadmap tecnica](#roadmap-tecnica)
+- [Task corrente](#task-corrente)
+
+## Panoramica
+
+**Universi Calcistici** è una web app locale pensata per simulare ecosistemi calcistici completi.  
+Ogni universo contiene squadre e, opzionalmente, giocatori; dentro ogni universo si susseguono edizioni stagionali, e dentro ogni edizione vivono le competizioni stagionali con le rispettive partecipanti, partite, risultati e sviluppi futuri.
+
+L’idea centrale è separare:
+- anagrafiche globali;
+- dati dell’universo;
+- dati della singola stagione;
+- dati della singola competizione stagionale.
+
+Questo permette di avere continuità tra le stagioni senza sporcare i dati base e senza duplicare logica inutile.
+
+## Obiettivo del progetto
+
+L’obiettivo è costruire un simulatore calcistico modulare, leggibile e progressivo, dove:
+
+- la **prima edizione** di un universo viene configurata manualmente;
+- dalla **seconda edizione in poi** il sistema può proporre o generare automaticamente i partecipanti alle competizioni in base ai risultati precedenti;
+- il progetto resta gestibile con PHP vanilla, senza framework, mantenendo la logica complessa concentrata nei `Services`.
+
+## Stack tecnico
+
+- PHP vanilla
+- MySQL / MariaDB
+- HTML / CSS / JavaScript
+- Bootstrap per la UI
+- Composer solo per:
+  - autoload PSR-4
+  - lettura del file `.env` tramite `vlucas/phpdotenv`
+- Ambiente locale:
+  - Laragon
+  - HeidiSQL
+
+## Stato attuale
+
+Il progetto ha ormai una base architetturale stabile e un primo blocco stagionale funzionante.
+
+Attualmente risultano operativi nel flusso principale:
+- gestione anagrafiche globali;
+- gestione universi;
+- gestione edizioni;
+- inizializzazione dati stagionali;
+- assegnazione giocatori alle squadre stagionali;
+- CRUD base delle competizioni;
+- CRUD base delle regole di avanzamento;
+- primo flusso di competizione stagionale con partite generate e gestione risultati;
+- supporto sia a competizioni di tipo **lega** sia a competizioni di tipo **eliminazione diretta**.
+
+Negli ultimi aggiornamenti è stata migliorata in particolare la vista competizione:
+- distinzione più chiara tra dati del **blocco** e dati della **singola partita**;
+- uso corretto di `fase + giornata` nei blocchi a eliminazione diretta;
+- migliore organizzazione delle info secondarie dentro il collapse della singola partita;
+- correzione del controllo tipo competizione da `eliminazione` a `eliminazione_diretta`.
+
+## Funzionalità disponibili
+
+### Anagrafiche globali
+- CRUD `Squadre`
+- CRUD `Giocatori`
+
+### Universi
+- CRUD `Universi`
+- associazione `UniversoSquadre`
+- associazione `UniversoGiocatori`
+
+### Edizioni
+- creazione e gestione `Edizioni`
+- inizializzazione dati stagionali da universo:
+  - `UniversoSquadre -> EdizioneSquadra`
+  - `UniversoGiocatori -> EdizioneGiocatore`
+
+### Rose stagionali
+- gestione `EdizioneSquadraGiocatore`
+- associazione manuale giocatori -> squadra della stagione
+- auto-assegnazione singola squadra
+- auto-assegnazione globale
+- controllo rosa completa / incompleta
+
+### Competizioni astratte
+- CRUD `Competizioni`
+- struttura competizione salvata in JSON (`Struttura`)
+- supporto ai tipi principali:
+  - lega
+  - eliminazione diretta
+
+### Avanzamenti
+- CRUD `CompetizioneAvanzamento`
+- regole di passaggio salvate in JSON (`Dettagli`)
+
+### Competizioni stagionali
+- gestione `EdizioneCompetizione`
+- gestione `EdizioneCompetizioneSquadra`
+- iscrizione squadre a una competizione stagionale
+- validazione del numero partecipanti
+- generazione partite
+- gestione risultati partita
+- simulazione base partita / blocco / competizione
+- reset risultati
+- distinzione tra blocchi di lega e blocchi a eliminazione diretta
+
+## Funzionalità in corso o previste
+
+- consolidamento finale dei vincoli sulle edizioni non più in bozza;
+- miglioramento UI e UX delle pagine competizione;
+- classifica completa e stabile per le leghe;
+- rifinitura della simulazione automatica;
+- avanzamento automatico tra stagioni;
+- generazione automatica partecipanti dalla seconda edizione in poi;
+- gestione completa di podio, qualificazioni, promozioni e retrocessioni;
+- uso futuro della tabella `users`.
+
+## Architettura del progetto
+
+Il progetto usa un’architettura MVC leggera, senza framework.
+
+### Principi usati
+- router minimale fatto in casa;
+- controller sottili;
+- logica di dominio spostata nei `Services`;
+- model semplici orientati a PDO;
+- viste PHP server-rendered.
+
+La logica importante non viene “nascosta” nel database ma gestita nel codice PHP, soprattutto nei servizi dedicati.
 
 ## Struttura cartelle
+
 ```text
 universi-calcistici/
 ├── database/
@@ -88,150 +228,163 @@ universi-calcistici/
 └── .gitignore
 ```
 
-## Schema DB (riassunto concettuale)
-- `Squadre`, `Giocatori`: anagrafiche GLOBALI, riutilizzabili su più Universi.
-- `Universi` + `UniversoSquadre`/`UniversoGiocatori`: quali Squadre/Giocatori esistono in un dato Universo.
-- `Edizioni`: le stagioni di un Universo (Stato: bozza/in_corso/conclusa).
-- `EdizioneSquadra`/`EdizioneGiocatore`: valori (Valore, FattoreCasa, Attacco, Difesa) ereditati dall'anagrafica base ma sovrascrivibili per singola edizione.
-- `EdizioneSquadreGiocatori`: in quale Squadra gioca ogni Giocatore, in quella Edizione.
-- `Competizioni`: entità stabile (es. "Serie A"), con `Struttura` JSON per le regole di formato (punti vittoria, andata/ritorno, n. gruppi, ecc).
-- `CompetizioneAvanzamento`: regole di passaggio tra Competizioni (promozioni, retrocessioni, qualificazioni), con `Dettagli` JSON per i parametri (posizione_da/posizione_a, tipo regola, ecc). Il caso "miglior 4° tra più campionati" si gestisce marcando i candidati con Stato='Candidata' in `EdizioneCompetizioneSquadra` e lasciando che una funzione PHP scelga il migliore.
-- `EdizioneCompetizione`: una Competizione concretizzata in una specifica Edizione (contiene anche `Podio` JSON a fine stagione).
-- `EdizioneCompetizioneSquadra`: quali Squadre partecipano a quella Competizione/Edizione, con Stato (Iscritta/Qualificata/Candidata/Eliminata/Promossa/Retrocessa) e Motivo (perché sono lì).
-- `Partite`: Fase (ENUM ordinabile: Girone, Sessantaquattresimo... Finale), Giornata, Girone, punteggi, `Dettagli` JSON (supplementari, rigori, tie_id, simulata/manuale).
-- `PartitaEventi`: un evento = una riga (gol/autogol/cartellini/sostituzioni), con `IDSquadra` esplicito (fondamentale per gli autogol) e `Dettagli` JSON per assist/sostituito/ecc. Se l'universo non usa i giocatori, questa tabella resta vuota e tutto il resto funziona comunque solo a livello squadre.
+## Modello dati
 
-Lo schema completo con tutte le colonne/tipi è nel file `database/schema.sql`.
+### Anagrafiche globali
+- `Squadre`, `Giocatori`: entità base riutilizzabili in più universi.
 
-## Decisioni già prese
-- Niente framework PHP: vanilla PHP + PDO + piccolo Router fatto in casa.
-- Composer usato solo per autoload PSR-4 (`App\` → `src/`) e `phpdotenv`.
-- Le regole complesse (formato competizione, regole di avanzamento, dettagli partita/eventi) stanno in colonne JSON, non in tabelle rigide: la complessità vive nel codice PHP (`Services`), non nello schema.
-- Autogol/assist: risolti con `IDSquadra` esplicito in `PartitaEventi` + JSON per i dettagli secondari.
-- Fase delle partite: ENUM ordinabile alfabeticamente per progressione naturale del torneo (`Girone < Sessantaquattresimo < ... < Finale`).
-- Multi-utente non serve ora ma la tabella `users` è già prevista per il futuro (per ora si lavora con un solo utente/owner implicito).
+### Universo
+- `Universi`: contenitore principale.
+- `UniversoSquadre`, `UniversoGiocatori`: definiscono quali squadre e giocatori appartengono a quel mondo simulato.
 
-## Come procedere (stato aggiornato)
+### Stagione
+- `Edizioni`: stagione di un universo, con stato come `bozza`, `in_corso`, `conclusa`.
+- `EdizioneSquadra`, `EdizioneGiocatore`: copie stagionali modificabili dei dati base.
+- `EdizioneSquadreGiocatori`: assegna i giocatori alle squadre di quella stagione.
 
-### Stato reale del progetto
-Il progetto è arrivato a una fase abbastanza stabile del blocco base e del blocco stagionale. Le funzioni principali di gestione di `Squadre`, `Giocatori`, `Universi`, `Edizioni`, `EdizioneSquadra`, `EdizioneGiocatore` e `EdizioneSquadraGiocatore` risultano operative nel flusso normale di utilizzo.
+### Competizioni
+- `Competizioni`: entità astratte e stabili, come “Serie A” o “Coppa Italia”.
+- `CompetizioneAvanzamento`: regole di passaggio tra competizioni.
 
-Non sono ancora stati eseguiti controlli aggressivi su tutti gli edge case, ma il flusso principale sembra reggere correttamente. Il prossimo passo è consolidare le competizioni stagionali dentro l’edizione e preparare il primo flusso completo di calendario, risultati e classifica.
+### Competizioni stagionali
+- `EdizioneCompetizione`: concretizzazione stagionale di una competizione dentro un’edizione.
+- `EdizioneCompetizioneSquadra`: partecipanti della competizione stagionale, con stato e motivo.
 
-### Cose già fatte
-- Struttura progetto definita e stabilizzata.
-- Schema database consolidato in `database/schema.sql`.
-- Anagrafiche globali complete: `Squadre` e `Giocatori`.
-- Gestione `Universi` completata.
-- Gestione `UniversoSquadre` completata.
-- Gestione `UniversoGiocatori` completata.
-- CRUD base per `Squadre`, `Giocatori`, `Universi`, `Competizioni` e `CompetizioneAvanzamento`.
-- Gestione `Edizioni` avviata e utilizzabile.
-- Inizializzazione dati stagionali avviata:
-  - copia `UniversoSquadre` → `EdizioneSquadra`
-  - copia `UniversoGiocatori` → `EdizioneGiocatore`
-- Gestione `EdizioneSquadraGiocatore` avviata:
-  - associazione manuale giocatori → squadra
-  - verifica rosa completa/incompleta
-  - auto-assegnazione singola squadra
-  - auto-assegnazione globale
-- Prime viste e controller del blocco stagionale già presenti.
-- Base architetturale pronta con:
-  - `public/index.php`
-  - router minimale
-  - `Database.php`
-  - model PDO
-  - controller MVC leggero
-  - services dedicati per logica complessa.
+### Partite
+- `Partite`: contiene fase, giornata, eventuale girone, risultato e dettagli JSON.
+- `PartitaEventi`: eventi granulari della partita, opzionali se il mondo usa anche i giocatori.
 
-### Cose già impostate bene
-- La logica complessa vive nei **Services**, non nello schema.
-- Le regole di formato competizione stanno in `Competizioni.Struttura`.
-- Le regole di passaggio stanno in `CompetizioneAvanzamento.Dettagli`.
-- La prima stagione resta configurata in modo manuale.
-- Dalla seconda stagione in poi il sistema dovrà poter auto-generare i partecipanti in base ai risultati precedenti.
-- Le rose stagionali sono già trattate come dati dell’edizione e non come modifica delle anagrafiche globali.
+## Regole e decisioni architetturali
 
-### Stato dei file nel progetto
-La struttura del progetto è ormai coerente: `Controllers`, `Models`, `Services`, `Support`, `Views`, `public`, `database`, `vendor`. Questo significa che i nuovi blocchi possono essere aggiunti senza ripensare l’architettura, ma solo estendendo il flusso applicativo già esistente. [cite:4]
+- Nessun framework PHP.
+- Router leggero custom.
+- Composer solo per autoload e `.env`.
+- Logica complessa nei `Services`.
+- JSON per strutture flessibili:
+  - `Competizioni.Struttura`
+  - `CompetizioneAvanzamento.Dettagli`
+  - `Partite.Dettagli`
+  - `PartitaEventi.Dettagli`
+- La prima stagione si prepara manualmente.
+- Le stagioni successive devono poter derivare dai risultati della precedente.
+- Le anagrafiche globali non devono essere mutate per rappresentare dati stagionali.
+- Nelle competizioni a eliminazione diretta la chiave logica dei blocchi è **fase + giornata**, non solo `giornata`.
+- Informazioni comuni al blocco, come `fase` e `giro`, vanno mostrate a livello blocco e non ripetute inutilmente su ogni partita. [cite:4]
 
-### Cosa manca ancora
-- Consolidamento finale del blocco `Edizioni`:
-  - rifinitura rotte/controller/view;
-  - blocchi modifica quando l’edizione non è più in bozza;
-  - controlli di coerenza più chiari.
-- Gestione completa di `EdizioneCompetizione`.
-- Gestione completa di `EdizioneCompetizioneSquadra`.
-- Primo flusso stabile di competizione stagionale manuale.
-- Generazione `Partite`.
-- Inserimento e modifica risultati.
-- Calcolo classifica.
-- Simulazione automatica.
-- Avanzamento automatico tra stagioni.
+## Setup locale
 
-## Prossimi passi
+### Requisiti
+- PHP 8.x
+- MySQL o MariaDB
+- Composer
+- Laragon consigliato
+- HeidiSQL consigliato
 
-### 1. Consolidare il blocco Edizioni
-Blocchi modifica quando l’edizione è finalizzata, controlli di coerenza e rifiniture minori.
+### Installazione
+```bash
+git clone <repo>
+cd universi-calcistici
+composer install
+```
 
-### 2. Aprire il blocco Competizioni stagionali
-Implementare e rifinire:
-- `EdizioneCompetizione`
-- `EdizioneCompetizioneSquadra`
+### Configurazione ambiente
+Crea un file `.env` nella root del progetto con variabili simili a queste:
 
-### 3. Rendere giocabile una competizione semplice
-Prima un solo formato semplice, poi formule più complesse:
-- iscrizione squadre;
-- validazione numero partecipanti;
-- calendario;
-- risultati;
-- classifica.
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=universi_calcistici
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-### 4. Rimandare i Services pesanti
-`SimulazioneService` e `AvanzamentoService` vanno introdotti solo quando il flusso competitivo base è stabile.
+### Database
+- crea il database vuoto;
+- importa `database/schema.sql`;
+- carica eventuali seed se necessari.
 
-## Appunti tecnici da ricordare
-- `Squadre` e `Giocatori` sono anagrafiche globali.
-- `UniversoSquadre` e `UniversoGiocatori` definiscono cosa esiste in un universo.
-- `Edizioni` rappresentano le stagioni dell’universo.
-- `EdizioneSquadra` e `EdizioneGiocatore` sono copie stagionali modificabili.
-- `EdizioneSquadraGiocatore` assegna i giocatori alle squadre nella stagione.
-- `Competizioni` sono entità astratte e stabili.
-- `CompetizioneAvanzamento` definisce le regole di passaggio tra competizioni.
-- `EdizioneCompetizione` rappresenta la competizione dentro una specifica stagione.
-- `EdizioneCompetizioneSquadra` definisce le squadre partecipanti a quella competizione stagionale.
-- `Partite` e `PartitaEventi` arrivano solo dopo il consolidamento del blocco stagionale e competitivo.
+### Avvio
+Configura Laragon o Apache per puntare a `public/` come document root.
 
-## Ordine consigliato di sviluppo
-1. Chiudere e rifinire il blocco `Edizioni`.
-2. Consolidare `EdizioneSquadraGiocatore`.
-3. Completare `EdizioneCompetizione`.
-4. Completare `EdizioneCompetizioneSquadra`.
-5. Stabilizzare una competizione stagionale manuale.
-6. Generare `Partite` per la lega semplice.
-7. Inserire e modificare risultati.
-8. Calcolare classifica e verificare i criteri base.
-9. Introdurre simulazione.
-10. Automatizzare gli avanzamenti stagionali.
+## Flusso corretto di lavoro
+
+L’ordine corretto del progetto è questo:
+
+1. Creare anagrafiche globali (`Squadre`, `Giocatori`).
+2. Creare un `Universo`.
+3. Associare squadre e giocatori all’universo.
+4. Creare una `Edizione`.
+5. Inizializzare i dati stagionali.
+6. Completare le rose stagionali.
+7. Creare o collegare le competizioni dell’edizione.
+8. Iscrivere le squadre alla competizione stagionale.
+9. Validare il numero partecipanti.
+10. Generare le partite.
+11. Inserire o simulare risultati.
+12. Calcolare classifiche o avanzamenti.
+13. Preparare la stagione successiva.
+
+## Roadmap tecnica
+
+### Blocco 1 - Consolidamento edizioni
+- blocchi modifica quando l’edizione non è più in bozza;
+- controlli di coerenza più chiari;
+- rifinitura controller e viste.
+
+### Blocco 2 - Competizione stagionale stabile
+- rifinitura `EdizioneCompetizione`;
+- rifinitura `EdizioneCompetizioneSquadra`;
+- gestione pulita partecipanti;
+- validazioni più robuste.
+
+### Blocco 3 - Flusso partite completo
+- generazione calendario/turni;
+- inserimento risultati;
+- reset risultati;
+- simulazione manuale e massiva;
+- UI competizione più ordinata.
+
+### Blocco 4 - Logiche sportive
+- classifica completa;
+- spareggi e criteri;
+- gestione coppe più avanzata;
+- podio e chiusura competizione.
+
+### Blocco 5 - Continuità stagionale
+- avanzamento automatico;
+- qualificazioni;
+- promozioni e retrocessioni;
+- auto-generazione partecipanti per edizioni successive.
 
 ## Task corrente
-### Obiettivo immediato
-Portare a termine il primo flusso completo:
-**Edizione -> Competizione stagionale -> Iscrizione squadre -> Calendario semplice**
 
-### Prossima implementazione concreta
-- rifinire `EdizioneCompetizione`;
-- rifinire `EdizioneCompetizioneSquadra`;
-- permettere di iscrivere manualmente le squadre di edizione a una competizione stagionale;
-- verificare che il numero partecipanti sia coerente con `Competizioni.NumeroPartecipanti`.
+### Obiettivo immediato
+Chiudere il primo flusso completo e stabile:
+
+**Edizione -> Competizione stagionale -> Iscrizione squadre -> Generazione partite -> Gestione risultati**
+
+### Prossime implementazioni concrete
+- rifinire la vista `competizioni/show.php`;
+- separare in modo definitivo dati del blocco e dati della singola partita;
+- consolidare la generazione dei blocchi per:
+  - lega
+  - eliminazione diretta;
+- rifinire le action:
+  - salva singola partita
+  - salva blocco
+  - simula partita
+  - simula blocco
+  - reset partita
+  - reset blocco;
+- verificare coerenza tra `Competizione.Tipo` e logica usata nei servizi.
 
 ### Criterio di completamento
-Questo blocco è considerato chiuso quando:
+Questo blocco si considera chiuso quando:
 - posso aprire una edizione;
 - posso vedere le competizioni stagionali dell’edizione;
 - posso associare squadre a una competizione stagionale;
-- posso validare che il numero squadre sia corretto;
-- la competizione è pronta per la generazione del calendario.
-
-## Criterio di avanzamento
-Si passa al blocco successivo solo quando quello precedente è stabile nel flusso, leggibile nel codice, chiaro nelle viste e coerente nei dati salvati. In questo progetto la priorità non è la quantità di feature, ma la continuità del flusso stagionale senza zone ambigue.
+- posso validare il numero partecipanti;
+- posso generare le partite;
+- posso salvare e simulare risultati in modo coerente;
+- nel caso di coppa vedo correttamente `fase + giornata`;
+- la competizione è pronta per classifica o avanzamento successivo.
