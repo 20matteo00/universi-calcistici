@@ -62,6 +62,8 @@ class CompetizioneController
             'nome_competizione' => '',
             'tipo' => 'lega',
             'numero_partecipanti' => 20,
+            'giri' => 1,
+            'inizialmente_vuota' => 0,
             'struttura' => '',
         ];
 
@@ -79,11 +81,12 @@ class CompetizioneController
             echo 'Universo non trovato';
             return;
         }
-
         $vecchiDati = [
             'nome_competizione' => trim((string) ($request->body['nome_competizione'] ?? '')),
             'tipo' => trim((string) ($request->body['tipo'] ?? '')),
             'numero_partecipanti' => (int) ($request->body['numero_partecipanti'] ?? 0),
+            'giri' => (int) ($request->body['giri'] ?? 1),
+            'inizialmente_vuota' => (int) ($request->body['inizialmente_vuota'] ?? 0),
             'struttura' => trim((string) ($request->body['struttura'] ?? '')),
         ];
 
@@ -100,6 +103,8 @@ class CompetizioneController
             'nome_competizione' => $vecchiDati['nome_competizione'],
             'tipo' => $vecchiDati['tipo'],
             'numero_partecipanti' => $vecchiDati['numero_partecipanti'],
+            'giri' => $vecchiDati['giri'],
+            'inizialmente_vuota' => $vecchiDati['inizialmente_vuota'],
             'struttura' => $vecchiDati['struttura'] !== '' ? $vecchiDati['struttura'] : null,
         ]);
 
@@ -134,6 +139,8 @@ class CompetizioneController
             'nome_competizione' => (string) ($competizione['NomeCompetizione'] ?? ''),
             'tipo' => (string) ($competizione['Tipo'] ?? 'lega'),
             'numero_partecipanti' => (int) ($competizione['NumeroPartecipanti'] ?? 0),
+            'giri' => (int) ($competizione['Giri'] ?? 1),
+            'inizialmente_vuota' => (int) ($competizione['InizialmenteVuota'] ?? 0),
             'struttura' => $this->formattaJson((string) ($competizione['Struttura'] ?? '')),
         ];
 
@@ -159,6 +166,8 @@ class CompetizioneController
             'nome_competizione' => trim((string) ($request->body['nome_competizione'] ?? '')),
             'tipo' => trim((string) ($request->body['tipo'] ?? '')),
             'numero_partecipanti' => (int) ($request->body['numero_partecipanti'] ?? 0),
+            'giri' => (int) ($request->body['giri'] ?? 1),
+            'inizialmente_vuota' => (int) ($request->body['inizialmente_vuota'] ?? 0),
             'struttura' => trim((string) ($request->body['struttura'] ?? '')),
         ];
 
@@ -175,6 +184,8 @@ class CompetizioneController
             'nome_competizione' => $vecchiDati['nome_competizione'],
             'tipo' => $vecchiDati['tipo'],
             'numero_partecipanti' => $vecchiDati['numero_partecipanti'],
+            'giri' => $vecchiDati['giri'],
+            'inizialmente_vuota' => $vecchiDati['inizialmente_vuota'],
             'struttura' => $vecchiDati['struttura'] !== '' ? $vecchiDati['struttura'] : null,
         ]);
 
@@ -208,6 +219,7 @@ class CompetizioneController
         $nomeCompetizione = trim((string) ($dati['nome_competizione'] ?? ''));
         $tipo = trim((string) ($dati['tipo'] ?? ''));
         $numeroPartecipanti = (int) ($dati['numero_partecipanti'] ?? 0);
+        $giri = (int) ($dati['giri'] ?? 1);
         $struttura = trim((string) ($dati['struttura'] ?? ''));
 
         if ($nomeCompetizione === '') {
@@ -218,12 +230,16 @@ class CompetizioneController
 
         if ($tipo === '') {
             $errori[] = 'Il tipo competizione è obbligatorio.';
-        } elseif (!CompetitionTypes::exists($tipo)) {
+        } elseif (!in_array($tipo, ['lega', 'eliminazione_diretta'], true)) {
             $errori[] = 'Il tipo competizione non è valido.';
         }
 
         if ($numeroPartecipanti < 2) {
             $errori[] = 'Il numero partecipanti deve essere almeno 2.';
+        }
+
+        if ($giri < 1) {
+            $errori[] = 'I giri devono essere almeno 1.';
         }
 
         if ($struttura !== '') {
@@ -232,7 +248,7 @@ class CompetizioneController
             if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
                 $errori[] = 'La struttura deve essere un JSON valido oppure vuota.';
             } else {
-                if (in_array($tipo, ['gironi', 'lega'], true)) {
+                if ($tipo === 'lega') {
                     $ordinamento = $decoded['classifica']['ordinamento'] ?? [];
 
                     if (!is_array($ordinamento) || $ordinamento === []) {
@@ -313,43 +329,14 @@ class CompetizioneController
             return;
         }
 
-        if (isset($struttura['fasi']) && is_array($struttura['fasi'])) {
-            foreach ($struttura['fasi'] as $fase) {
-                if (!is_array($fase) || !isset($fase['tipo'])) {
-                    continue;
-                }
-
-                if ($fase['tipo'] === 'gironi') {
-                    $vecchiDati['gironi_livello'] = $fase['livello'] ?? '';
-                    $vecchiDati['gironi_giri'] = $fase['giri'] ?? 1;
-                    $vecchiDati['gironi_numero'] = $fase['numero_gironi'] ?? 4;
-                }
-
-                if ($fase['tipo'] === 'campionato') {
-                    $vecchiDati['lega_livello'] = $fase['livello'] ?? '';
-                    $vecchiDati['lega_giri'] = $fase['giri'] ?? 2;
-                }
-
-                if ($fase['tipo'] === 'eliminazione_diretta') {
-                    $vecchiDati['elim_giri'] = $fase['giri'] ?? 1;
-                    $vecchiDati['elim_finale_secca'] = $fase['finale_secca'] ?? 1;
-                    $vecchiDati['elim_finale_terzo_posto'] = $fase['finale_terzo_posto'] ?? 0;
-                }
-            }
-        } else {
-            $vecchiDati['gironi_livello'] = $struttura['livello'] ?? '';
-            $vecchiDati['gironi_giri'] = $struttura['giri'] ?? 1;
-            $vecchiDati['gironi_numero'] = $struttura['numero_gironi'] ?? 4;
-            $vecchiDati['lega_livello'] = $struttura['livello'] ?? '';
-            $vecchiDati['lega_giri'] = $struttura['giri'] ?? 2;
-            $vecchiDati['elim_giri'] = $struttura['giri'] ?? 1;
-            $vecchiDati['elim_finale_secca'] = $struttura['finale_secca'] ?? 1;
-            $vecchiDati['elim_finale_terzo_posto'] = $struttura['finale_terzo_posto'] ?? 0;
-        }
-
+        $vecchiDati['lega_livello'] = $struttura['livello'] ?? '';
+        $vecchiDati['lega_girone'] = $struttura['girone'] ?? '';
         $vecchiDati['punti_vittoria'] = $struttura['punti']['vittoria'] ?? 3;
         $vecchiDati['punti_pareggio'] = $struttura['punti']['pareggio'] ?? 1;
         $vecchiDati['punti_sconfitta'] = $struttura['punti']['sconfitta'] ?? 0;
         $vecchiDati['ordinamento_classifica'] = $struttura['classifica']['ordinamento'] ?? ['punti', 'differenza_reti', 'gol_fatti'];
+
+        $vecchiDati['elim_finale_secca'] = $struttura['finale_secca'] ?? 1;
+        $vecchiDati['elim_finale_terzo_posto'] = $struttura['finale_terzo_posto'] ?? 0;
     }
 }

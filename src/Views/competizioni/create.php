@@ -44,7 +44,7 @@ use App\Support\CompetitionTypes;
                                 <h2 class="h5 mb-3">Dati generali</h2>
 
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label for="nome_competizione" class="form-label">Nome competizione</label>
                                         <input
                                             type="text"
@@ -56,7 +56,7 @@ use App\Support\CompetitionTypes;
                                             value="<?= htmlspecialchars((string) ($vecchiDati['nome_competizione'] ?? '')) ?>">
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label for="numero_partecipanti" class="form-label">Partecipanti</label>
                                         <input
                                             type="number"
@@ -68,7 +68,19 @@ use App\Support\CompetitionTypes;
                                             value="<?= (int) ($vecchiDati['numero_partecipanti'] ?? 20) ?>">
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
+                                        <label for="giri" class="form-label">Giri</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            class="form-control"
+                                            id="giri"
+                                            name="giri"
+                                            required
+                                            value="<?= (int) ($vecchiDati['giri'] ?? 1) ?>">
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <label for="tipo" class="form-label">Tipo</label>
                                         <?php $tipoSelezionato = (string) ($vecchiDati['tipo'] ?? 'lega'); ?>
                                         <select
@@ -83,28 +95,16 @@ use App\Support\CompetitionTypes;
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="col-12 js-section" data-section="gironi">
-                            <div class="border rounded p-3">
-                                <h2 class="h5 mb-3">Gironi</h2>
-
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label for="gironi_livello" class="form-label">Livello</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="gironi_livello" placeholder="Es. 1" value="<?= htmlspecialchars((string) ($vecchiDati['gironi_livello'] ?? '')) ?>">
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label for="gironi_giri" class="form-label">Giri</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="gironi_giri" value="<?= (int) ($vecchiDati['gironi_giri'] ?? 1) ?>">
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label for="gironi_numero" class="form-label">Numero gironi</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="gironi_numero" value="<?= (int) ($vecchiDati['gironi_numero'] ?? 4) ?>">
+                                    <div class="col-md-2">
+                                        <label for="inizialmente_vuota" class="form-label">Vuota all'inizio</label>
+                                        <select
+                                            class="form-select"
+                                            id="inizialmente_vuota"
+                                            name="inizialmente_vuota">
+                                            <option value="0" <?= empty($vecchiDati['inizialmente_vuota']) ? 'selected' : '' ?>>No</option>
+                                            <option value="1" <?= !empty($vecchiDati['inizialmente_vuota']) ? 'selected' : '' ?>>Sì</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -117,28 +117,34 @@ use App\Support\CompetitionTypes;
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label for="lega_livello" class="form-label">Livello</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="lega_livello" placeholder="Es. 1" value="<?= htmlspecialchars((string) ($vecchiDati['lega_livello'] ?? '')) ?>">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            class="form-control js-struttura-field"
+                                            id="lega_livello"
+                                            placeholder="Es. 1"
+                                            value="<?= htmlspecialchars((string) ($vecchiDati['lega_livello'] ?? '')) ?>">
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label for="lega_giri" class="form-label">Giri</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="lega_giri" value="<?= (int) ($vecchiDati['lega_giri'] ?? 2) ?>">
+                                        <label for="lega_girone" class="form-label">Girone</label>
+                                        <input
+                                            type="text"
+                                            class="form-control js-struttura-field"
+                                            id="lega_girone"
+                                            placeholder="Es. A"
+                                            value="<?= htmlspecialchars((string) ($vecchiDati['lega_girone'] ?? '')) ?>">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-12 js-section" data-section="eliminazione_diretta">
+                        <div class="col-12 js-section d-none" data-section="eliminazione_diretta">
                             <div class="border rounded p-3">
                                 <h2 class="h5 mb-3">Eliminazione diretta</h2>
 
                                 <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label for="elim_giri" class="form-label">Giri</label>
-                                        <input type="number" min="1" class="form-control js-struttura-field" id="elim_giri" value="<?= (int) ($vecchiDati['elim_giri'] ?? 1) ?>">
-                                    </div>
-
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="elim_finale_secca" class="form-label">Finale secca</label>
                                         <select class="form-select js-struttura-field" id="elim_finale_secca">
                                             <option value="1" <?= !empty($vecchiDati['elim_finale_secca']) ? 'selected' : '' ?>>Sì</option>
@@ -146,7 +152,7 @@ use App\Support\CompetitionTypes;
                                         </select>
                                     </div>
 
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="elim_finale_terzo_posto" class="form-label">Finale 3° posto</label>
                                         <select class="form-select js-struttura-field" id="elim_finale_terzo_posto">
                                             <option value="0" <?= empty($vecchiDati['elim_finale_terzo_posto']) ? 'selected' : '' ?>>No</option>
@@ -157,7 +163,7 @@ use App\Support\CompetitionTypes;
                             </div>
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-12 js-section" data-section="lega-classifica">
                             <div class="border rounded p-3">
                                 <h2 class="h5 mb-3">Punti e classifica</h2>
 
@@ -229,11 +235,10 @@ use App\Support\CompetitionTypes;
                                     class="form-control"
                                     id="struttura"
                                     name="struttura"
-                                    rows="24"
-                                    placeholder='{"fasi":[]}'><?= htmlspecialchars((string) ($vecchiDati['struttura'] ?? '')) ?></textarea>
+                                    rows="18"><?= htmlspecialchars((string) ($vecchiDati['struttura'] ?? '')) ?></textarea>
 
                                 <div class="form-text mt-2">
-                                    Questo JSON contiene struttura, punti e ordine della classifica.
+                                    Questo JSON contiene solo i campi specifici del tipo competizione.
                                 </div>
                             </div>
                         </div>
@@ -257,15 +262,21 @@ use App\Support\CompetitionTypes;
             const addButton = document.getElementById('aggiungiCriterio');
             const strutturaInputs = document.querySelectorAll('.js-struttura-field');
             const tipoCompetizione = document.getElementById('tipo');
-            const sections = document.querySelectorAll('.js-section');
+            const sections = document.querySelectorAll('.js-section[data-section]');
             const list = document.getElementById('ordinamentoList');
             const template = document.getElementById('criterioTemplate');
             const errore = document.getElementById('ordinamentoErrore');
+            const ordinamentoIniziale = <?= json_encode($vecchiDati['ordinamento_classifica'] ?? ['punti', 'differenza_reti', 'gol_fatti'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
             function intOrNull(value) {
                 if (value === '' || value === null || typeof value === 'undefined') return null;
                 const parsed = parseInt(value, 10);
                 return Number.isNaN(parsed) ? null : parsed;
+            }
+
+            function stringOrNull(value) {
+                const normalized = String(value ?? '').trim();
+                return normalized === '' ? null : normalized;
             }
 
             function boolFromSelect(value) {
@@ -274,9 +285,19 @@ use App\Support\CompetitionTypes;
 
             function updateSections() {
                 const tipo = tipoCompetizione.value;
-                sections.forEach(function(section) { section.classList.add('d-none'); });
-                const active = document.querySelector('[data-section="' + tipo + '"]');
-                if (active) active.classList.remove('d-none');
+
+                sections.forEach(function(section) {
+                    const sectionType = section.getAttribute('data-section');
+                    section.classList.add('d-none');
+
+                    if (sectionType === tipo) {
+                        section.classList.remove('d-none');
+                    }
+
+                    if (sectionType === 'lega-classifica' && tipo === 'lega') {
+                        section.classList.remove('d-none');
+                    }
+                });
             }
 
             function bindItemEvents(item) {
@@ -289,16 +310,19 @@ use App\Support\CompetitionTypes;
                     validateOrdinamento();
                     buildStruttura();
                 });
+
                 removeButton.addEventListener('click', function() {
                     item.remove();
                     validateOrdinamento();
                     buildStruttura();
                 });
+
                 upButton.addEventListener('click', function() {
                     const prev = item.previousElementSibling;
                     if (prev) list.insertBefore(item, prev);
                     buildStruttura();
                 });
+
                 downButton.addEventListener('click', function() {
                     const next = item.nextElementSibling;
                     if (next) list.insertBefore(next, item);
@@ -320,12 +344,24 @@ use App\Support\CompetitionTypes;
             }
 
             function validateOrdinamento() {
+                if (tipoCompetizione.value !== 'lega') {
+                    errore.classList.add('d-none');
+                    list.querySelectorAll('.js-ordinamento-select').forEach(function(select) {
+                        select.classList.remove('is-invalid');
+                    });
+                    return true;
+                }
+
                 const values = getOrdinamento();
                 const hasDuplicates = new Set(values).size !== values.length;
+
                 list.querySelectorAll('.js-ordinamento-select').forEach(function(select) {
                     select.classList.remove('is-invalid');
-                    if (hasDuplicates) select.classList.add('is-invalid');
+                    if (hasDuplicates) {
+                        select.classList.add('is-invalid');
+                    }
                 });
+
                 errore.classList.toggle('d-none', !hasDuplicates);
                 return !hasDuplicates;
             }
@@ -334,26 +370,10 @@ use App\Support\CompetitionTypes;
                 const tipo = tipoCompetizione.value;
                 let struttura = {};
 
-                if (tipo === 'gironi') {
-                    struttura = {
-                        livello: intOrNull(document.getElementById('gironi_livello').value),
-                        giri: intOrNull(document.getElementById('gironi_giri').value),
-                        numero_gironi: intOrNull(document.getElementById('gironi_numero').value),
-                        punti: {
-                            vittoria: intOrNull(document.getElementById('punti_vittoria').value) ?? 3,
-                            pareggio: intOrNull(document.getElementById('punti_pareggio').value) ?? 1,
-                            sconfitta: intOrNull(document.getElementById('punti_sconfitta').value) ?? 0
-                        },
-                        classifica: {
-                            ordinamento: getOrdinamento()
-                        }
-                    };
-                }
-
                 if (tipo === 'lega') {
                     struttura = {
                         livello: intOrNull(document.getElementById('lega_livello').value),
-                        giri: intOrNull(document.getElementById('lega_giri').value),
+                        girone: stringOrNull(document.getElementById('lega_girone').value),
                         punti: {
                             vittoria: intOrNull(document.getElementById('punti_vittoria').value) ?? 3,
                             pareggio: intOrNull(document.getElementById('punti_pareggio').value) ?? 1,
@@ -367,7 +387,6 @@ use App\Support\CompetitionTypes;
 
                 if (tipo === 'eliminazione_diretta') {
                     struttura = {
-                        giri: intOrNull(document.getElementById('elim_giri').value),
                         finale_secca: boolFromSelect(document.getElementById('elim_finale_secca').value),
                         finale_terzo_posto: boolFromSelect(document.getElementById('elim_finale_terzo_posto').value)
                     };
@@ -376,12 +395,8 @@ use App\Support\CompetitionTypes;
                 strutturaField.value = JSON.stringify(struttura, null, 2);
             }
 
-            document.getElementById('gironi_livello')?.addEventListener('input', buildStruttura);
-            document.getElementById('gironi_giri')?.addEventListener('input', buildStruttura);
-            document.getElementById('gironi_numero')?.addEventListener('input', buildStruttura);
             document.getElementById('lega_livello')?.addEventListener('input', buildStruttura);
-            document.getElementById('lega_giri')?.addEventListener('input', buildStruttura);
-            document.getElementById('elim_giri')?.addEventListener('input', buildStruttura);
+            document.getElementById('lega_girone')?.addEventListener('input', buildStruttura);
             document.getElementById('elim_finale_secca')?.addEventListener('change', buildStruttura);
             document.getElementById('elim_finale_terzo_posto')?.addEventListener('change', buildStruttura);
             document.getElementById('punti_vittoria')?.addEventListener('input', buildStruttura);
@@ -395,6 +410,7 @@ use App\Support\CompetitionTypes;
 
             tipoCompetizione.addEventListener('change', function() {
                 updateSections();
+                validateOrdinamento();
                 buildStruttura();
             });
 
@@ -412,13 +428,21 @@ use App\Support\CompetitionTypes;
                     event.preventDefault();
                     return;
                 }
+
                 buildStruttura();
             });
 
+            if (Array.isArray(ordinamentoIniziale) && ordinamentoIniziale.length > 0) {
+                ordinamentoIniziale.forEach(function(criterio) {
+                    addCriterio(criterio);
+                });
+            } else {
+                addCriterio('punti');
+                addCriterio('differenza_reti');
+                addCriterio('gol_fatti');
+            }
+
             updateSections();
-            addCriterio('punti');
-            addCriterio('differenza_reti');
-            addCriterio('gol_fatti');
             buildStruttura();
         });
     </script>

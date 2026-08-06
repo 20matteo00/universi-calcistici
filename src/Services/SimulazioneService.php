@@ -66,32 +66,34 @@ class SimulazioneService
         $difesaTrasferta = $forzaTrasferta['difesa_finale'];
 
         $differenzaBase = $forzaCasa['rating_globale'] - $forzaTrasferta['rating_globale'];
-        $differenzaNormalizzata = $differenzaBase / 120;
+        $differenzaNormalizzata = $differenzaBase / 160;
 
-        $baseCasa = (($attaccoCasa - $difesaTrasferta) * 0.018);
-        $baseTrasferta = (($attaccoTrasferta - $difesaCasa) * 0.018);
+        $baseCasa = (($attaccoCasa - $difesaTrasferta) * 0.015);
+        $baseTrasferta = (($attaccoTrasferta - $difesaCasa) * 0.015);
 
-        $indiceCasa = 1.20 + $baseCasa + ($differenzaNormalizzata * 0.32);
-        $indiceTrasferta = 1.00 + $baseTrasferta - ($differenzaNormalizzata * 0.28);
+        $vantaggioCasa = 0.18;
 
-        $indiceCasa += $this->randomFloat(-0.18, 0.18);
-        $indiceTrasferta += $this->randomFloat(-0.18, 0.18);
+        $indiceCasa = 1.08 + $vantaggioCasa + $baseCasa + ($differenzaNormalizzata * 0.24);
+        $indiceTrasferta = 1.08 + $baseTrasferta - ($differenzaNormalizzata * 0.24);
 
-        $indiceCasa = max(0.20, min(2.80, $indiceCasa));
-        $indiceTrasferta = max(0.20, min(2.60, $indiceTrasferta));
+        $indiceCasa += $this->randomFloat(-0.16, 0.16);
+        $indiceTrasferta += $this->randomFloat(-0.16, 0.16);
 
-        $golCasa = $this->convertiIndiceInGol($indiceCasa, true);
-        $golTrasferta = $this->convertiIndiceInGol($indiceTrasferta, false);
+        $indiceCasa = max(0.25, min(2.40, $indiceCasa));
+        $indiceTrasferta = max(0.25, min(2.40, $indiceTrasferta));
 
-        if ($differenzaBase > 140 && $golCasa === 0 && $this->percentuale(45)) {
+        $golCasa = $this->convertiIndiceInGol($indiceCasa);
+        $golTrasferta = $this->convertiIndiceInGol($indiceTrasferta);
+
+        if ($differenzaBase > 180 && $golCasa === 0 && $this->percentuale(25)) {
             $golCasa = 1;
         }
 
-        if ($differenzaBase < -140 && $golTrasferta === 0 && $this->percentuale(45)) {
+        if ($differenzaBase < -180 && $golTrasferta === 0 && $this->percentuale(25)) {
             $golTrasferta = 1;
         }
 
-        if (abs($differenzaBase) < 60 && $this->percentuale(12)) {
+        if (abs($differenzaBase) < 45 && $this->percentuale(10)) {
             if ($this->percentuale(50)) {
                 $golCasa++;
             } else {
@@ -110,6 +112,8 @@ class SimulazioneService
             'forza_casa' => $forzaCasa,
             'forza_trasferta' => $forzaTrasferta,
             'differenza_base' => $differenzaBase,
+            'indice_casa' => $indiceCasa,
+            'indice_trasferta' => $indiceTrasferta,
         ];
     }
 
@@ -121,10 +125,10 @@ class SimulazioneService
         $mediaAttacco = $this->mediaCampo($rosa, 'Attacco');
         $mediaDifesa = $this->mediaCampo($rosa, 'Difesa');
 
-        $bonusCasa = $inCasa ? ($fattoreCasa * 0.35) : 0.0;
+        $bonusCasa = $inCasa ? ($fattoreCasa * 0.08) : 0.0;
 
         $attaccoFinale = ($valoreSquadra * 0.55) + ($mediaAttacco * 0.45) + $bonusCasa;
-        $difesaFinale = ($valoreSquadra * 0.55) + ($mediaDifesa * 0.45) + ($bonusCasa * 0.35);
+        $difesaFinale = ($valoreSquadra * 0.55) + ($mediaDifesa * 0.45);
         $ratingGlobale = ($valoreSquadra * 0.50) + ($mediaAttacco * 0.25) + ($mediaDifesa * 0.25) + $bonusCasa;
 
         return [
@@ -160,37 +164,32 @@ class SimulazioneService
         return $somma / $conteggio;
     }
 
-    private function convertiIndiceInGol(float $indice, bool $isCasa): int
+    private function convertiIndiceInGol(float $indice): int
     {
         $base = $indice;
+        $base += $this->randomFloat(-0.08, 0.08);
 
-        if ($isCasa) {
-            $base += 0.08;
+        if ($base < 0.50) {
+            return $this->estraiGolPesati([0 => 78, 1 => 17, 2 => 4, 3 => 1]);
         }
 
-        $base += $this->randomFloat(-0.10, 0.10);
-
-        if ($base < 0.55) {
-            return $this->estraiGolPesati([0 => 74, 1 => 20, 2 => 5, 3 => 1]);
+        if ($base < 0.85) {
+            return $this->estraiGolPesati([0 => 54, 1 => 30, 2 => 11, 3 => 4, 4 => 1]);
         }
 
-        if ($base < 0.90) {
-            return $this->estraiGolPesati([0 => 48, 1 => 34, 2 => 13, 3 => 4, 4 => 1]);
+        if ($base < 1.20) {
+            return $this->estraiGolPesati([0 => 34, 1 => 38, 2 => 18, 3 => 7, 4 => 2, 5 => 1]);
         }
 
-        if ($base < 1.25) {
-            return $this->estraiGolPesati([0 => 30, 1 => 39, 2 => 20, 3 => 8, 4 => 2, 5 => 1]);
+        if ($base < 1.55) {
+            return $this->estraiGolPesati([0 => 22, 1 => 36, 2 => 24, 3 => 11, 4 => 5, 5 => 1, 6 => 1]);
         }
 
-        if ($base < 1.65) {
-            return $this->estraiGolPesati([0 => 18, 1 => 35, 2 => 26, 3 => 13, 4 => 5, 5 => 2, 6 => 1]);
+        if ($base < 1.95) {
+            return $this->estraiGolPesati([0 => 13, 1 => 29, 2 => 27, 3 => 16, 4 => 8, 5 => 4, 6 => 3]);
         }
 
-        if ($base < 2.05) {
-            return $this->estraiGolPesati([0 => 10, 1 => 27, 2 => 29, 3 => 18, 4 => 9, 5 => 4, 6 => 3]);
-        }
-
-        return $this->estraiGolPesati([0 => 6, 1 => 18, 2 => 26, 3 => 22, 4 => 13, 5 => 9, 6 => 6]);
+        return $this->estraiGolPesati([0 => 8, 1 => 21, 2 => 26, 3 => 20, 4 => 12, 5 => 7, 6 => 6]);
     }
 
     private function estraiGolPesati(array $pesi): int
@@ -273,27 +272,27 @@ class SimulazioneService
 
     private function etichettaEsitoAtteso(float $differenza): string
     {
-        if ($differenza >= 160) {
+        if ($differenza >= 180) {
             return 'Casa nettamente favorita';
         }
 
-        if ($differenza >= 70) {
+        if ($differenza >= 85) {
             return 'Casa favorita';
         }
 
-        if ($differenza >= 25) {
+        if ($differenza >= 30) {
             return 'Casa leggermente favorita';
         }
 
-        if ($differenza <= -160) {
+        if ($differenza <= -180) {
             return 'Trasferta nettamente favorita';
         }
 
-        if ($differenza <= -70) {
+        if ($differenza <= -85) {
             return 'Trasferta favorita';
         }
 
-        if ($differenza <= -25) {
+        if ($differenza <= -30) {
             return 'Trasferta leggermente favorita';
         }
 

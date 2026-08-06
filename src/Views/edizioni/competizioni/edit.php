@@ -9,6 +9,9 @@
 /** @var array $warningMessaggi */
 /** @var array $altreCompetizioniPerSquadra */
 
+
+use App\Support\Countries;
+
 $idsSelezionati = [];
 foreach ($squadreIscritte as $squadra) {
     $idsSelezionati[] = (int) ($squadra['IDSquadra'] ?? 0);
@@ -27,15 +30,19 @@ foreach ($squadreEdizione as $squadra) {
         $disponibili[] = $squadra;
     }
 }
+
+$paesi = Countries::all();
 ?>
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Competizione - <?= htmlspecialchars((string) ($edizioneCompetizione['NomeCompetizione'] ?? '')) ?></title>
     <?php require __DIR__ . '/../../partials/link.php'; ?>
 </head>
+
 <body>
     <div class="container py-4">
         <div class="mb-4">
@@ -92,6 +99,7 @@ foreach ($squadreEdizione as $squadra) {
                             <label for="motivo" class="form-label">Motivo</label>
                             <input type="text" class="form-control" id="motivo" name="motivo" maxlength="150" value="Iscrizione manuale">
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -122,7 +130,7 @@ foreach ($squadreEdizione as $squadra) {
                                                 value="<?= $idSquadra ?>"
                                                 checked>
                                             <label class="form-check-label">
-                                                <strong><?= htmlspecialchars((string) ($squadra['Nome'] ?? '')) ?></strong>
+                                                <strong><?= htmlspecialchars((string) ($squadra['Nome'] ?? '')) ?></strong> <span>(<?= $paesi[$squadra['Paese']] ?? '' ?>)</span>
                                             </label>
                                         </div>
 
@@ -166,7 +174,7 @@ foreach ($squadreEdizione as $squadra) {
                                                 name="ids_squadre[]"
                                                 value="<?= $idSquadra ?>">
                                             <label class="form-check-label">
-                                                <strong><?= htmlspecialchars((string) ($squadra['Nome'] ?? '')) ?></strong>
+                                                <strong><?= htmlspecialchars((string) ($squadra['Nome'] ?? '')) ?></strong> <span>(<?= $paesi[$squadra['Paese']] ?? '' ?>)</span>
                                             </label>
                                         </div>
 
@@ -195,7 +203,7 @@ foreach ($squadreEdizione as $squadra) {
     </div>
 
     <script>
-        (function () {
+        (function() {
             const filterList = (inputId, listId, counterId) => {
                 const input = document.getElementById(inputId);
                 const list = document.getElementById(listId);
@@ -246,4 +254,5 @@ foreach ($squadreEdizione as $squadra) {
 
     <?php require __DIR__ . '/../../partials/script.php'; ?>
 </body>
+
 </html>

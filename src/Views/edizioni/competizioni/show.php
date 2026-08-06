@@ -3,11 +3,11 @@
 /** @var array $universo */
 /** @var array $edizione */
 /** @var array $competizione */
-/** @var array $partitePerGiornata */
+/** @var array $blocchiPartite */
 
 $totalePartite = 0;
-foreach ($partitePerGiornata as $partite) {
-    $totalePartite += count($partite);
+foreach ($blocchiPartite as $blocco) {
+    $totalePartite += count($blocco['partite'] ?? []);
 }
 ?>
 <!DOCTYPE html>
@@ -49,7 +49,7 @@ foreach ($partitePerGiornata as $partite) {
                                 Tipo <?= htmlspecialchars((string) ($competizione['Tipo'] ?? '')) ?>
                             </p>
                             <div class="small text-muted">
-                                Giornate: <?= count($partitePerGiornata) ?> ·
+                                Blocchi: <?= count($blocchiPartite) ?> ·
                                 Partite totali: <?= $totalePartite ?>
                             </div>
                         </div>
@@ -77,48 +77,74 @@ foreach ($partitePerGiornata as $partite) {
                 </div>
             </div>
 
-            <?php if ($partitePerGiornata === []): ?>
+            <?php if ($blocchiPartite === []): ?>
                 <div class="alert alert-warning mb-4">
                     Nessuna partita generata per questa competizione.
                 </div>
             <?php else: ?>
                 <div class="row g-4">
-                    <?php foreach ($partitePerGiornata as $giornata => $partite): ?>
+                    <?php foreach ($blocchiPartite as $blocco): ?>
                         <div class="col-12 col-xl-6">
-                            <div class="card shadow-sm border-0 h-100 giornata-card">
+                            <div id="<?= htmlspecialchars((string) $blocco['anchor']) ?>" class="card shadow-sm border-0 h-100 giornata-card">
                                 <div class="card-header bg-white border-0 pt-4 pb-3">
                                     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                                         <div>
-                                            <h2 class="h5 mb-1">Giornata <?= (int) $giornata ?></h2>
+                                            <h2 class="h5 mb-1"><?= htmlspecialchars((string) $blocco['titolo']) ?></h2>
                                             <div class="small text-muted">
-                                                <?= count($partite) ?> partite
+                                                <?= count($blocco['partite']) ?> partite
                                             </div>
                                         </div>
 
                                         <div class="giornata-toolbar d-flex flex-wrap gap-2">
-                                            <button
-                                                type="submit"
-                                                formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $giornata ?>/salva"
-                                                formmethod="post"
-                                                class="btn btn-sm btn-primary">
-                                                Salva
-                                            </button>
+                                            <?php if (!empty($blocco['fase'])): ?>
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode((string) $blocco['fase']) ?>/giornate/<?= (int) $blocco['giornata'] ?>/salva"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-primary">
+                                                    Salva
+                                                </button>
 
-                                            <button
-                                                type="submit"
-                                                formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $giornata ?>/simula"
-                                                formmethod="post"
-                                                class="btn btn-sm btn-outline-primary">
-                                                Simula
-                                            </button>
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode((string) $blocco['fase']) ?>/giornate/<?= (int) $blocco['giornata'] ?>/simula"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    Simula
+                                                </button>
 
-                                            <button
-                                                type="submit"
-                                                formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $giornata ?>/reset"
-                                                formmethod="post"
-                                                class="btn btn-sm btn-outline-danger">
-                                                Elimina
-                                            </button>
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode((string) $blocco['fase']) ?>/giornate/<?= (int) $blocco['giornata'] ?>/reset"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-outline-danger">
+                                                    Elimina
+                                                </button>
+                                            <?php else: ?>
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/salva"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-primary">
+                                                    Salva
+                                                </button>
+
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/simula"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    Simula
+                                                </button>
+
+                                                <button
+                                                    type="submit"
+                                                    formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/reset"
+                                                    formmethod="post"
+                                                    class="btn btn-sm btn-outline-danger">
+                                                    Elimina
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -136,7 +162,7 @@ foreach ($partitePerGiornata as $partite) {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($partite as $partita): ?>
+                                                <?php foreach ($blocco['partite'] as $partita): ?>
                                                     <tr>
                                                         <td>
                                                             <div class="fw-semibold">
@@ -284,6 +310,19 @@ foreach ($partitePerGiornata as $partite) {
                     }
                 });
             });
+
+            if (window.location.hash) {
+                const target = document.querySelector(window.location.hash);
+
+                if (target) {
+                    setTimeout(function() {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }, 50);
+                }
+            }
         });
     </script>
 </body>

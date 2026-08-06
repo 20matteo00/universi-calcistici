@@ -134,8 +134,10 @@ CREATE TABLE Competizioni (
     IDUniverso INT UNSIGNED NOT NULL,
     NomeCompetizione VARCHAR(150) NOT NULL,
     Tipo VARCHAR(100) NOT NULL,
-    -- es. campionato, eliminazione_diretta, gironi_eliminazione, playoff_playout
+    -- es. lega, eliminazione_diretta,
     NumeroPartecipanti INT UNSIGNED NOT NULL DEFAULT 0,
+    Giri INT UNSIGNED NOT NULL DEFAULT 1,
+    InizialmenteVuota BOOLEAN NOT NULL DEFAULT 0,
     Struttura JSON NULL,
     -- regole effettive: punti vittoria/pareggio, andata/ritorno,
     -- n. gruppi, tie-break, playoff/out, ecc.
@@ -217,7 +219,7 @@ CREATE TABLE Partite (
         'Finale'
     ) NULL,
     Giornata SMALLINT NULL,
-    -- giornata di campionato, o leg 1/2 per elim. diretta
+    -- giornata di lega, o leg 1/2 per elim. diretta
     Girone VARCHAR(10) NULL,
     -- es. 'A','B' per fase a gruppi
     Data DATETIME NULL,

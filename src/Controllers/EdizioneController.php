@@ -173,6 +173,12 @@ class EdizioneController
 
         $squadreCoperte = [];
         foreach ($competizioni as $competizione) {
+            $inizialmenteVuota = !empty($competizione['InizialmenteVuota']);
+
+            if ($inizialmenteVuota) {
+                continue;
+            }
+
             $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
             $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
 
@@ -193,7 +199,7 @@ class EdizioneController
             }
         }
 
-        $puoFinalizzare = $roseComplete && $competizioniComplete;
+        $puoFinalizzare = $roseComplete && $competizioniComplete && $this->calcolaCoperturaCompetizioniFinalizzabili($idEdizione);
 
         require __DIR__ . '/../Views/edizioni/show.php';
     }
@@ -240,7 +246,6 @@ class EdizioneController
 
     public function roseEdit(Request $request, array $parametri): void
     {
-
         $idUniverso = (int) ($parametri['id'] ?? 0);
         $idEdizione = (int) ($parametri['idEdizione'] ?? 0);
         $idSquadra = (int) ($parametri['idSquadra'] ?? 0);
@@ -277,7 +282,7 @@ class EdizioneController
 
         if ($squadra === null) {
             http_response_code(404);
-            echo 'Squadra non trovata nell’edizione';
+            echo 'Squadra non trovata nell\'edizione';
             return;
         }
 
@@ -329,7 +334,7 @@ class EdizioneController
 
         if ($squadra === null) {
             http_response_code(404);
-            echo 'Squadra non trovata nell’edizione';
+            echo 'Squadra non trovata nell\'edizione';
             return;
         }
 
@@ -516,7 +521,7 @@ class EdizioneController
 
         foreach ($idsSquadre as $idSquadra) {
             if (!isset($mappaSquadre[$idSquadra])) {
-                $errori[] = 'Una o più squadre selezionate non appartengono all’edizione.';
+                $errori[] = 'Una o più squadre selezionate non appartengono all\'edizione.';
                 break;
             }
         }
@@ -661,8 +666,120 @@ class EdizioneController
         $competizioni = $this->edizioni->competizioniEdizione($idEdizione);
 
         $squadreCoperte = [];
+        $competizioniComplete = true;
+        $messaggioErroreCompetizioni = null;
 
         foreach ($competizioni as $competizione) {
+            $inizialmenteVuota = !empty($competizione['InizialmenteVuota']);
+
+            if ($inizialmenteVuota) {
+                continue;
+            }
+
+            $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
+            $nomeCompetizione = (string) ($competizione['NomeCompetizione'] ?? 'Competizione');
+            $numeroAtteso = (int) ($competizione['NumeroPartecipanti'] ?? 0);
+
+            $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
+
+            $idsSquadreIscritte = array_values(array_filter(
+                array_map(
+                    fn(array $squadra): int => (int) ($squadra['IDSquadra'] ?? 0),
+                    $squadreIscritte
+                ),
+                fn(int $id): bool => $id > 0
+            ));
+
+            foreach ($idsSquadreIscritte as $idSquadra) {
+                $squadreCoperte[$idSquadra] = true;
+            }
+
+            $numeroIscritte = count($idsSquadreIscritte);
+
+            if ($numeroIscritte !== $numeroAtteso) {
+                $competizioniComplete = false;
+                $messaggioErroreCompetizioni = 'La competizione "' . $nomeCompetizione . '" deve avere esattamente ' . $numeroAtteso . ' squadre, attualmente ne ha ' . $numeroIscritte . '.';
+                break;
+            }
+        }
+
+        if ($competizioniComplete) {
+            foreach ($squadreEdizione as $squadraEdizione) {
+                $idSquadra = (int) ($squadraEdizione['IDSquadra'] ?? 0);
+
+                if ($idSquadra > 0 && !isset($squadreCoperte[$idSquadra])) {
+                    $competizioniComplete = false;
+                    $messaggioErroreCompetizioni = 'Esistono squadre dell’edizione non presenti in alcuna competizione inizialmente attiva.';
+                    break;
+                }
+            }
+        }
+
+        $coperturaFinalizzabili = $this->calcolaCoperturaCompetizioniFinalizzabili($idEdizione);
+
+        if (!$roseComplete || !$competizioniComplete || !$coperturaFinalizzabili) {
+            http_response_code(400);
+
+            if (!$roseComplete) {
+                echo 'Non puoi finalizzare: rose incomplete.';
+                return;
+            }
+
+            if (!$competizioniComplete) {
+                echo 'Non puoi finalizzare: ' . $messaggioErroreCompetizioni;
+                return;
+            }
+
+            echo 'Non puoi finalizzare: configurazione competizioni non valida.';
+            return;
+        }
+
+        $pdo = Database::getConnessione();
+
+        try {
+            $pdo->beginTransaction();
+
+            $this->calendarioService->generaPerEdizione($idEdizione);
+
+            $stmt = $pdo->prepare("
+            UPDATE Edizioni
+            SET Stato = 'in_corso'
+            WHERE ID = :idEdizione
+        ");
+
+            $stmt->execute([
+                'idEdizione' => $idEdizione,
+            ]);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            http_response_code(500);
+            echo 'Errore durante la finalizzazione dell\'edizione: ' . $e->getMessage();
+            return;
+        }
+
+        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione);
+        exit;
+    }
+
+    private function calcolaCoperturaCompetizioniFinalizzabili(int $idEdizione): bool
+    {
+        $squadreEdizione = $this->edizioni->squadreEdizione($idEdizione);
+        $competizioni = $this->edizioni->competizioniEdizione($idEdizione);
+
+        $squadreCoperte = [];
+
+        foreach ($competizioni as $competizione) {
+            $inizialmenteVuota = !empty($competizione['InizialmenteVuota']);
+
+            if ($inizialmenteVuota) {
+                continue;
+            }
+
             $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
             $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
 
@@ -675,38 +792,15 @@ class EdizioneController
             }
         }
 
-        $competizioniComplete = true;
-
         foreach ($squadreEdizione as $squadraEdizione) {
             $idSquadra = (int) ($squadraEdizione['IDSquadra'] ?? 0);
 
             if ($idSquadra > 0 && !isset($squadreCoperte[$idSquadra])) {
-                $competizioniComplete = false;
-                break;
+                return false;
             }
         }
 
-        if (!$roseComplete || !$competizioniComplete) {
-            http_response_code(400);
-            echo 'Non puoi finalizzare: rose incomplete oppure esistono squadre non presenti in alcuna competizione.';
-            return;
-        }
-
-        $pdo = Database::getConnessione();
-        $stmt = $pdo->prepare("
-            UPDATE Edizioni
-            SET Stato = 'in_corso'
-            WHERE ID = :idEdizione
-        ");
-
-        $this->calendarioService->generaPerEdizione($idEdizione);
-
-        $stmt->execute([
-            'idEdizione' => $idEdizione,
-        ]);
-
-        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione);
-        exit;
+        return true;
     }
 
     private function edizioneModificabile(array $edizione): bool
@@ -747,15 +841,37 @@ class EdizioneController
             return;
         }
 
-        $partitePerGiornata = $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
-
+        $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
         $simulazione = new SimulazioneService();
 
-        foreach ($partitePerGiornata as $giornata => $partite) {
-            foreach ($partite as $indice => $partita) {
-                $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
+        if ($tipoCompetizione === 'eliminazione') {
+            $blocchiPartite = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
 
-                $partitePerGiornata[$giornata][$indice]['PreviewSimulazione'] = $preview;
+            foreach ($blocchiPartite as $chiave => $blocco) {
+                foreach ($blocco['partite'] as $indice => $partita) {
+                    $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
+                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $preview;
+                }
+            }
+        } else {
+            $partitePerGiornata = $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
+            $blocchiPartite = [];
+
+            foreach ($partitePerGiornata as $giornata => $partite) {
+                $chiave = 'giornata-' . (int) $giornata;
+                $blocchiPartite[$chiave] = [
+                    'chiave' => $chiave,
+                    'anchor' => 'giornata-' . (int) $giornata,
+                    'fase' => null,
+                    'giornata' => (int) $giornata,
+                    'titolo' => 'Giornata ' . (int) $giornata,
+                    'partite' => $partite,
+                ];
+
+                foreach ($blocchiPartite[$chiave]['partite'] as $indice => $partita) {
+                    $preview = $simulazione->calcolaPreviewPartita((int) $partita['ID']);
+                    $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $preview;
+                }
             }
         }
 
@@ -800,7 +916,7 @@ class EdizioneController
 
         if ($squadra === null) {
             http_response_code(404);
-            echo 'Squadra non trovata nell’edizione';
+            echo 'Squadra non trovata nell\'edizione';
             return;
         }
 

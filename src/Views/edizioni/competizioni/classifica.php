@@ -336,7 +336,7 @@ function uc_nome_competizione(array $competizione): string
                             <tbody>
                                 <tr>
                                     <?php foreach ($segmentiCapolista as $segmento): ?>
-                                        <td class="text-center" colspan="<?= (int) $segmento['colspan'] ?>">
+                                        <td class="text-center border" colspan="<?= (int) $segmento['colspan'] ?>">
                                             <?php if ($segmento['pari']): ?>
                                                 <span class="fw-semibold text-muted">-</span>
                                             <?php else: ?>

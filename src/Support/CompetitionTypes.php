@@ -9,7 +9,6 @@ final class CompetitionTypes
     private const ALL = [
         'lega' => 'Lega',
         'eliminazione_diretta' => 'Eliminazione diretta',
-        'gironi' => 'Gironi',
     ];
 
     public static function all(): array

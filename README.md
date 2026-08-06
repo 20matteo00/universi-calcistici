@@ -1,7 +1,7 @@
 # Progetto: Universi Calcistici
 
 ## Cos'è
-App web per creare "universi calcistici" simulati: dentro ogni universo si creano Squadre e Giocatori (facoltativi), poi Competizioni di vario tipo (campionato, eliminazione diretta, gironi+eliminazione, playoff/out) con le proprie regole (promozioni, retrocessioni, qualificazioni ad altre competizioni). Le Edizioni (stagioni) si susseguono nel tempo: la prima è configurata a mano, dalla seconda in poi il sistema deve poter auto-generare le squadre partecipanti in base alle regole di passaggio (`CompetizioneAvanzamento`) applicate ai risultati dell'edizione precedente.
+App web per creare "universi calcistici" simulati: dentro ogni universo si creano Squadre e Giocatori (facoltativi), poi Competizioni di vario tipo (lega, eliminazione diretta) con le proprie regole (promozioni, retrocessioni, qualificazioni ad altre competizioni). Le Edizioni (stagioni) si susseguono nel tempo: la prima è configurata a mano, dalla seconda in poi il sistema deve poter auto-generare le squadre partecipanti in base alle regole di passaggio (`CompetizioneAvanzamento`) applicate ai risultati dell'edizione precedente.
 
 Stack: PHP (vanilla, no framework) + MySQL/MariaDB + JS/CSS/HTML, ambiente locale Laragon + HeidiSQL. Composer usato solo per autoload PSR-4 e per leggere il file `.env` (pacchetto `vlucas/phpdotenv`).
 
@@ -208,7 +208,7 @@ Prima un solo formato semplice, poi formule più complesse:
 3. Completare `EdizioneCompetizione`.
 4. Completare `EdizioneCompetizioneSquadra`.
 5. Stabilizzare una competizione stagionale manuale.
-6. Generare `Partite` per il campionato semplice.
+6. Generare `Partite` per la lega semplice.
 7. Inserire e modificare risultati.
 8. Calcolare classifica e verificare i criteri base.
 9. Introdurre simulazione.

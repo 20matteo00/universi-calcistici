@@ -54,7 +54,7 @@ class PartitaController
         }
 
         $this->salvaRisultatoPartitaById($idPartita, $goalCasaRaw, $goalTrasfertaRaw);
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $this->anchorDaPartita($partita));
     }
 
     public function simulaPartita(Request $request, array $params): void
@@ -77,7 +77,7 @@ class PartitaController
         }
 
         $this->simulaPartitaById($idPartita);
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $this->anchorDaPartita($partita));
     }
 
     public function resetPartita(Request $request, array $params): void
@@ -100,7 +100,7 @@ class PartitaController
         }
 
         $this->resetPartitaById($idPartita);
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $this->anchorDaPartita($partita));
     }
 
     public function salvaGiornata(Request $request, array $params): void
@@ -141,7 +141,13 @@ class PartitaController
             $this->salvaRisultatoPartitaById($idPartita, $goalCasaRaw, $goalTrasfertaRaw);
         }
 
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $anchor = 'giornata-' . $giornata;
+
+        if ($partite !== []) {
+            $anchor = $this->anchorDaPartita($partite[0]);
+        }
+
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function simulaGiornata(Request $request, array $params): void
@@ -172,7 +178,13 @@ class PartitaController
             }
         }
 
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $anchor = 'giornata-' . $giornata;
+
+        if ($partite !== []) {
+            $anchor = $this->anchorDaPartita($partite[0]);
+        }
+
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function resetGiornata(Request $request, array $params): void
@@ -203,7 +215,13 @@ class PartitaController
             }
         }
 
-        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
+        $anchor = 'giornata-' . $giornata;
+
+        if ($partite !== []) {
+            $anchor = $this->anchorDaPartita($partite[0]);
+        }
+
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function salvaTutte(Request $request, array $params): void
@@ -359,9 +377,43 @@ class PartitaController
         return true;
     }
 
-    private function redirectCompetizione(int $idUniverso, int $idEdizione, int $idEdizioneCompetizione): void
-    {
-        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+    private function redirectCompetizione(
+        int $idUniverso,
+        int $idEdizione,
+        int $idEdizioneCompetizione,
+        ?string $anchor = null
+    ): void {
+        $url = '/universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione;
+
+        if ($anchor !== null && $anchor !== '') {
+            $url .= '#' . rawurlencode($anchor);
+        }
+
+        header('Location: ' . $url);
         exit;
+    }
+
+    private function anchorDaPartita(array $partita): string
+    {
+        $fase = $partita['Fase'] ?? null;
+        $giornata = (int) ($partita['Giornata'] ?? 0);
+
+        if ($fase === null || $fase === '') {
+            return 'giornata-' . $giornata;
+        }
+
+        return 'fase-' . $this->slug((string) $fase) . '-giornata-' . $giornata;
+    }
+
+    private function slug(string $testo): string
+    {
+        $slug = mb_strtolower(trim($testo));
+        $slug = str_replace(
+            ['à', 'è', 'é', 'ì', 'ò', 'ù'],
+            ['a', 'e', 'e', 'i', 'o', 'u'],
+            $slug
+        );
+        $slug = preg_replace('/[^a-z0-9]+/u', '-', $slug) ?? '';
+        return trim($slug, '-');
     }
 }
