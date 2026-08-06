@@ -402,39 +402,119 @@ function uc_style_squadra(?string $jsonColori): array
                                                     <?php $eventi = $partita['Eventi'] ?? []; ?>
 
                                                     <?php if (!empty($eventi)): ?>
-                                                        <div class="text-muted text-uppercase small mb-1 text-center">Eventi</div>
-                                                        <div class="d-flex flex-column align-items-center">
+                                                        <div class="text-muted text-uppercase small mb-2 text-center">Eventi</div>
+
+                                                        <?php
+                                                        $idSquadraCasa = (int) ($partita['IDSquadraCasa'] ?? 0);
+                                                        $idSquadraTrasferta = (int) ($partita['IDSquadraTrasferta'] ?? 0);
+                                                        ?>
+
+                                                        <div class="position-relative">
+                                                            <!-- linea centrale -->
+                                                            <div class="position-absolute top-0 start-50 border-start h-100" style="z-index: 0;"></div>
+
                                                             <?php foreach ($eventi as $evento): ?>
                                                                 <?php
                                                                 $tipo = (string) ($evento['Tipo'] ?? '');
                                                                 $minuto = (int) ($evento['Minuto'] ?? 0);
+                                                                $idSquadraEvento = (int) ($evento['IDSquadra'] ?? 0);
                                                                 $giocatore = trim((string) ($evento['NomeGiocatoreCompleto'] ?? ''));
+                                                                $assist = trim((string) ($evento['NomeAssist'] ?? ''));
                                                                 $dettagli = $evento['DettagliArray'] ?? [];
 
-                                                                $testo = match ($tipo) {
-                                                                    'gol' => 'Gol',
-                                                                    'rigore_sbagliato' => 'Rigore sbagliato',
-                                                                    'ammonizione' => 'Ammonizione',
-                                                                    'espulsione' => 'Espulsione',
-                                                                    default => ucfirst(str_replace('_', ' ', $tipo)),
-                                                                };
+                                                                $isCasa = $idSquadraEvento === $idSquadraCasa;
+
+                                                                // Icona principale (Font Awesome)
+                                                                $iconaClass = '';
+                                                                $labelVisivo = '';
 
                                                                 if ($tipo === 'gol') {
+                                                                    // Pallone da calcio
+                                                                    $iconaClass = 'fa-solid fa-futbol';
                                                                     if (!empty($dettagli['autogol'])) {
-                                                                        $testo = 'Autogol';
+                                                                        $labelVisivo = 'Autogol';
                                                                     } elseif (!empty($dettagli['rigore'])) {
-                                                                        $testo = 'Gol su rigore';
+                                                                        $labelVisivo = 'Gol su rigore';
                                                                     } elseif (!empty($dettagli['assist_id'])) {
-                                                                        $testo = 'Gol con assist';
+                                                                        $labelVisivo = 'Gol';
+                                                                    } else {
+                                                                        $labelVisivo = 'Gol';
                                                                     }
+                                                                } elseif ($tipo === 'rigore_sbagliato') {
+                                                                    // Fischietto
+                                                                    $iconaClass = 'fa-solid fa-whistle';
+                                                                    $labelVisivo = 'Rigore sbagliato';
+                                                                } elseif ($tipo === 'ammonizione') {
+                                                                    // Pallino giallo
+                                                                    $iconaClass = 'fa-solid fa-circle text-warning';
+                                                                    $labelVisivo = 'Ammonizione';
+                                                                } elseif ($tipo === 'espulsione') {
+                                                                    // Pallino rosso
+                                                                    $iconaClass = 'fa-solid fa-circle text-danger';
+                                                                    $labelVisivo = 'Espulsione';
+                                                                } else {
+                                                                    $labelVisivo = ucfirst(str_replace('_', ' ', $tipo));
                                                                 }
                                                                 ?>
-                                                                <div class="py-1 small text-center">
-                                                                    <?= $minuto ?>′
-                                                                    <?= htmlspecialchars($testo) ?>
-                                                                    <?php if ($giocatore !== ''): ?>
-                                                                        -
-                                                                        <?= htmlspecialchars($giocatore) ?>
+
+                                                                <div class="row align-items-center g-2 py-1 position-relative" style="z-index: 1;">
+                                                                    <!-- Evento casa -->
+                                                                    <?php if ($isCasa): ?>
+                                                                        <div class="col-5 text-end">
+                                                                            <div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded bg-light border">
+                                                                                <?php if ($iconaClass): ?>
+                                                                                    <i class="<?= htmlspecialchars($iconaClass) ?>" aria-hidden="true"></i>
+                                                                                <?php endif; ?>
+                                                                                <span class="small">
+                                                                                    <strong><?= htmlspecialchars($labelVisivo) ?></strong>
+                                                                                    <?php if ($giocatore !== ''): ?>
+                                                                                        - <?= htmlspecialchars($giocatore) ?>
+                                                                                    <?php endif; ?>
+                                                                                </span>
+                                                                            </div>
+
+                                                                            <?php if ($tipo === 'gol' && !empty($dettagli['assist_id']) && $assist !== ''): ?>
+                                                                                <div class="small text-muted mt-1">
+                                                                                    <i class="fa-solid fa-shoe-prints me-1" aria-hidden="true"></i>
+                                                                                    Assist: <?= htmlspecialchars($assist) ?>
+                                                                                </div>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <div class="col-5"></div>
+                                                                    <?php endif; ?>
+
+                                                                    <!-- Minuto centrale -->
+                                                                    <div class="col-2 text-center small fw-semibold text-muted">
+                                                                        <span class="d-inline-block px-2 py-1 rounded bg-white border">
+                                                                            <?= $minuto ?>′
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <!-- Evento trasferta -->
+                                                                    <?php if (!$isCasa): ?>
+                                                                        <div class="col-5 text-start">
+                                                                            <div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded bg-light border">
+                                                                                <?php if ($iconaClass): ?>
+                                                                                    <i class="<?= htmlspecialchars($iconaClass) ?>" aria-hidden="true"></i>
+                                                                                <?php endif; ?>
+                                                                                <span class="small">
+                                                                                    <strong><?= htmlspecialchars($labelVisivo) ?></strong>
+                                                                                    <?php if ($giocatore !== ''): ?>
+                                                                                        - <?= htmlspecialchars($giocatore) ?>
+                                                                                    <?php endif; ?>
+                                                                                </span>
+                                                                            </div>
+
+                                                                            <?php if ($tipo === 'gol' && !empty($dettagli['assist_id']) && $assist !== ''): ?>
+                                                                                <div class="small text-muted mt-1">
+                                                                                    <i class="fa-solid fa-shoe-prints me-1" aria-hidden="true"></i>
+                                                                                    Assist: <?= htmlspecialchars($assist) ?>
+                                                                                </div>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <div class="col-5"></div>
                                                                     <?php endif; ?>
                                                                 </div>
                                                             <?php endforeach; ?>

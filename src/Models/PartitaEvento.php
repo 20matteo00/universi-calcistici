@@ -52,16 +52,16 @@ final class PartitaEvento
     public function findByPartita(int $idPartita): array
     {
         $sql = "
-            SELECT
-                pe.*,
-                g.Nome AS NomeGiocatore,
-                s.Nome AS NomeSquadra
-            FROM PartitaEventi pe
-            LEFT JOIN Giocatori g ON g.ID = pe.IDGiocatore
-            INNER JOIN Squadre s ON s.ID = pe.IDSquadra
-            WHERE pe.IDPartita = :id_partita
-            ORDER BY pe.Minuto ASC, pe.ID ASC
-        ";
+        SELECT
+            pe.*,
+            g.Nome AS NomeGiocatore,
+            s.Nome AS NomeSquadra
+        FROM PartitaEventi pe
+        LEFT JOIN Giocatori g ON g.ID = pe.IDGiocatore
+        INNER JOIN Squadre s ON s.ID = pe.IDSquadra
+        WHERE pe.IDPartita = :id_partita
+        ORDER BY pe.Minuto ASC, pe.ID ASC
+    ";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -69,6 +69,9 @@ final class PartitaEvento
         ]);
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // Cache nomi giocatori per assist
+        $nomiGiocatori = [];
 
         foreach ($rows as &$row) {
             $row['DettagliArray'] = [];
@@ -81,7 +84,25 @@ final class PartitaEvento
             }
 
             $nome = trim((string) ($row['NomeGiocatore'] ?? ''));
-            $row['NomeGiocatoreCompleto'] = trim($nome);
+            $row['NomeGiocatoreCompleto'] = $nome;
+
+            // Risolvi nome assist se presente
+            $row['NomeAssist'] = null;
+            $assistId = (int) ($row['DettagliArray']['assist_id'] ?? 0);
+            if ($assistId > 0) {
+                if (!isset($nomiGiocatori[$assistId])) {
+                    $stmtAssist = $this->pdo->prepare("
+                    SELECT Nome
+                    FROM Giocatori
+                    WHERE ID = :id
+                    LIMIT 1
+                ");
+                    $stmtAssist->execute(['id' => $assistId]);
+                    $assistRow = $stmtAssist->fetch(PDO::FETCH_ASSOC);
+                    $nomiGiocatori[$assistId] = $assistRow ? trim((string) ($assistRow['Nome'] ?? '')) : null;
+                }
+                $row['NomeAssist'] = $nomiGiocatori[$assistId];
+            }
         }
         unset($row);
 

@@ -14,6 +14,7 @@ final class EventGeneratorService
     private PDO $pdo;
     private Partita $partite;
     private PartitaEvento $partitaEventi;
+    private array $minutiUsati = [];
 
     public function __construct()
     {
@@ -25,7 +26,7 @@ final class EventGeneratorService
     public function rigeneraPerPartita(int $idPartita): void
     {
         $partita = $this->caricaPartita($idPartita);
-
+        $this->minutiUsati = [];
         if (!$partita) {
             return;
         }
@@ -309,7 +310,17 @@ final class EventGeneratorService
 
     private function randomMinuto(): int
     {
-        return random_int(1, 90);
+        if (count($this->minutiUsati) >= 90) {
+            return 90;
+        }
+
+        do {
+            $minuto = random_int(1, 90);
+        } while (in_array($minuto, $this->minutiUsati, true));
+
+        $this->minutiUsati[] = $minuto;
+
+        return $minuto;
     }
 
     private function chance(int $percent): bool
