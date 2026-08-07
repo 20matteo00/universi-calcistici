@@ -967,6 +967,7 @@ class EdizioneController
         $giornataDa = (int) ($request->query['giornata_da'] ?? $giornataMin);
         $giornataA = (int) ($request->query['giornata_a'] ?? $giornataMax);
         $tabAttiva = (string) ($request->query['tab'] ?? 'generale');
+        $tabGiocatoriAttiva = (string) ($request->query['tab_giocatori'] ?? 'marcatori');
 
         if ($giornataDa < $giornataMin) {
             $giornataDa = $giornataMin;
@@ -987,7 +988,7 @@ class EdizioneController
 
         $numeroGiri = max(1, (int) ($competizione['Giri'] ?? 1));
 
-        $classificaService = new \App\Services\ClassificaService();
+        $classificaService = new ClassificaService();
 
         $visteClassifica = $classificaService->calcolaVisteCompetizione(
             $idEdizioneCompetizione,
@@ -997,10 +998,17 @@ class EdizioneController
             $numeroGiri
         );
 
-        $datiClassifica = $visteClassifica['generale'] ?? [];
+        $datiClassifica = $visteClassifica[$tabAttiva] ?? ($visteClassifica['generale'] ?? []);
+
         $tabellaCapolista = $classificaService->calcolaTabellaCapolista(
             $idEdizioneCompetizione,
             $struttura
+        );
+
+        $statisticheGiocatori = $classificaService->calcolaStatisticheGiocatori(
+            $idEdizioneCompetizione,
+            $giornataDa,
+            $giornataA
         );
 
         require __DIR__ . '/../Views/edizioni/competizioni/classifica.php';

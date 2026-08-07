@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Config\Database;
 use App\Models\Partita;
 use App\Models\PartitaEvento;
+use JsonException;
 use PDO;
 
 final class EventGeneratorService
@@ -27,12 +28,13 @@ final class EventGeneratorService
     {
         $partita = $this->caricaPartita($idPartita);
         $this->minutiUsati = [];
+
         if (!$partita) {
             return;
         }
 
-        $goalCasa = $partita['GoalCasa'];
-        $goalTrasferta = $partita['GoalTrasferta'];
+        $goalCasa = $partita['GoalCasa'] ?? null;
+        $goalTrasferta = $partita['GoalTrasferta'] ?? null;
 
         if ($goalCasa === null || $goalTrasferta === null) {
             return;
@@ -83,9 +85,14 @@ final class EventGeneratorService
             $squadraRigore = $this->chance(50) ? $idSquadraCasa : $idSquadraTrasferta;
             $rosaRigore = $squadraRigore === $idSquadraCasa ? $rosaCasa : $rosaTrasferta;
 
+            $rigorista = $this->pickWeightedPlayerId(
+                $rosaRigore,
+                fn(array $g): float => $this->pesoRigore($g)
+            );
+
             $eventi[] = [
                 'IDPartita' => $idPartita,
-                'IDGiocatore' => $this->pickRandomPlayerId($rosaRigore),
+                'IDGiocatore' => $rigorista,
                 'IDSquadra' => $squadraRigore,
                 'Tipo' => 'rigore_sbagliato',
                 'Minuto' => $this->randomMinuto(),
@@ -94,16 +101,17 @@ final class EventGeneratorService
         }
 
         usort($eventi, static function (array $a, array $b): int {
-            if ($a['Minuto'] === $b['Minuto']) {
-                return 0;
-            }
-
-            return $a['Minuto'] <=> $b['Minuto'];
+            return ($a['Minuto'] ?? 0) <=> ($b['Minuto'] ?? 0);
         });
 
         foreach ($eventi as $evento) {
             $this->partitaEventi->create($evento);
         }
+    }
+
+    public function cancellaPerPartita(int $idPartita): void
+    {
+        $this->partitaEventi->deleteByPartita($idPartita);
     }
 
     private function caricaPartita(int $idPartita): ?array
@@ -129,9 +137,18 @@ final class EventGeneratorService
     private function caricaGiocatoriSquadraEdizione(int $idEdizione, int $idSquadra): array
     {
         $sql = "
-            SELECT g.ID, g.Nome
+            SELECT
+                g.ID,
+                g.Nome,
+                g.Posizione,
+                COALESCE(eg.Attacco, g.Attacco, 0) AS Attacco,
+                COALESCE(eg.Difesa, g.Difesa, 0) AS Difesa
             FROM EdizioneSquadraGiocatore esg
-            INNER JOIN Giocatori g ON g.ID = esg.IDGiocatore
+            INNER JOIN Giocatori g
+                ON g.ID = esg.IDGiocatore
+            LEFT JOIN EdizioneGiocatore eg
+                ON eg.IDEdizione = esg.IDEdizione
+               AND eg.IDGiocatore = esg.IDGiocatore
             WHERE esg.IDEdizione = :id_edizione
               AND esg.IDSquadra = :id_squadra
         ";
@@ -160,7 +177,10 @@ final class EventGeneratorService
             $minuto = $this->randomMinuto();
 
             if ($roll <= 1) {
-                $autoreAutogol = $this->pickRandomPlayerId($rosaAvversaria);
+                $autoreAutogol = $this->pickWeightedPlayerId(
+                    $rosaAvversaria,
+                    fn(array $g): float => $this->pesoAutogol($g)
+                );
 
                 $eventi[] = [
                     'IDPartita' => $idPartita,
@@ -168,13 +188,16 @@ final class EventGeneratorService
                     'IDSquadra' => $idSquadraBeneficio,
                     'Tipo' => 'gol',
                     'Minuto' => $minuto,
-                    'Dettagli' => json_encode(['autogol' => true], JSON_UNESCAPED_UNICODE),
+                    'Dettagli' => $this->json(['autogol' => true]),
                 ];
                 continue;
             }
 
             if ($roll <= 6) {
-                $rigorista = $this->pickRandomPlayerId($rosaBeneficio);
+                $rigorista = $this->pickWeightedPlayerId(
+                    $rosaBeneficio,
+                    fn(array $g): float => $this->pesoRigore($g)
+                );
 
                 $eventi[] = [
                     'IDPartita' => $idPartita,
@@ -182,14 +205,25 @@ final class EventGeneratorService
                     'IDSquadra' => $idSquadraBeneficio,
                     'Tipo' => 'gol',
                     'Minuto' => $minuto,
-                    'Dettagli' => json_encode(['rigore' => true], JSON_UNESCAPED_UNICODE),
+                    'Dettagli' => $this->json(['rigore' => true]),
                 ];
+                continue;
+            }
+
+            $marcatore = $this->pickWeightedPlayerId(
+                $rosaBeneficio,
+                fn(array $g): float => $this->pesoGol($g)
+            );
+
+            if ($marcatore === null) {
+                $marcatore = $this->pickRandomPlayerId($rosaBeneficio);
+            }
+
+            if ($marcatore === null) {
                 continue;
             }
 
             if ($roll <= 26) {
-                $marcatore = $this->pickRandomPlayerId($rosaBeneficio);
-
                 $eventi[] = [
                     'IDPartita' => $idPartita,
                     'IDGiocatore' => $marcatore,
@@ -201,20 +235,15 @@ final class EventGeneratorService
                 continue;
             }
 
-            $marcatore = $this->pickRandomPlayerId($rosaBeneficio);
-            $assist = $this->pickDifferentPlayerId($rosaBeneficio, $marcatore);
+            $giocatoriAssist = array_values(array_filter(
+                $rosaBeneficio,
+                static fn(array $g): bool => (int) ($g['ID'] ?? 0) !== $marcatore
+            ));
 
-            if ($assist === null) {
-                $eventi[] = [
-                    'IDPartita' => $idPartita,
-                    'IDGiocatore' => $marcatore,
-                    'IDSquadra' => $idSquadraBeneficio,
-                    'Tipo' => 'gol',
-                    'Minuto' => $minuto,
-                    'Dettagli' => null,
-                ];
-                continue;
-            }
+            $assist = $this->pickWeightedPlayerId(
+                $giocatoriAssist,
+                fn(array $g): float => $this->pesoAssist($g)
+            );
 
             $eventi[] = [
                 'IDPartita' => $idPartita,
@@ -222,7 +251,9 @@ final class EventGeneratorService
                 'IDSquadra' => $idSquadraBeneficio,
                 'Tipo' => 'gol',
                 'Minuto' => $minuto,
-                'Dettagli' => json_encode(['assist_id' => $assist], JSON_UNESCAPED_UNICODE),
+                'Dettagli' => $assist !== null
+                    ? $this->json(['assist_id' => $assist])
+                    : null,
             ];
         }
 
@@ -237,7 +268,15 @@ final class EventGeneratorService
         $numeroGialli = random_int(0, 3);
 
         for ($i = 0; $i < $numeroGialli; $i++) {
-            $giocatoreId = $this->pickRandomPlayerIdExcluding($rosa, $giaAmmoniti);
+            $candidati = array_values(array_filter(
+                $rosa,
+                static fn(array $g): bool => !in_array((int) ($g['ID'] ?? 0), $giaAmmoniti, true)
+            ));
+
+            $giocatoreId = $this->pickWeightedPlayerId(
+                $candidati,
+                fn(array $g): float => $this->pesoCartellino($g)
+            );
 
             if ($giocatoreId === null) {
                 break;
@@ -258,10 +297,13 @@ final class EventGeneratorService
         if ($this->chance(7)) {
             $candidatiEspulsione = array_values(array_filter(
                 $rosa,
-                static fn(array $g): bool => !in_array((int) $g['ID'], $giaAmmoniti, true)
+                static fn(array $g): bool => !in_array((int) ($g['ID'] ?? 0), $giaAmmoniti, true)
             ));
 
-            $espulso = $this->pickRandomPlayerId($candidatiEspulsione);
+            $espulso = $this->pickWeightedPlayerId(
+                $candidatiEspulsione,
+                fn(array $g): float => $this->pesoCartellino($g)
+            );
 
             if ($espulso !== null) {
                 $eventi[] = [
@@ -285,27 +327,153 @@ final class EventGeneratorService
         }
 
         $index = array_rand($giocatori);
+
         return isset($giocatori[$index]['ID']) ? (int) $giocatori[$index]['ID'] : null;
     }
 
-    private function pickDifferentPlayerId(array $giocatori, ?int $excludedId): ?int
+    private function pickWeightedPlayerId(array $giocatori, callable $weightResolver): ?int
     {
-        $filtrati = array_values(array_filter(
-            $giocatori,
-            static fn(array $g): bool => (int) ($g['ID'] ?? 0) !== (int) $excludedId
-        ));
+        if ($giocatori === []) {
+            return null;
+        }
 
-        return $this->pickRandomPlayerId($filtrati);
+        $weighted = [];
+        $totalWeight = 0.0;
+
+        foreach ($giocatori as $giocatore) {
+            $id = (int) ($giocatore['ID'] ?? 0);
+
+            if ($id <= 0) {
+                continue;
+            }
+
+            $weight = (float) $weightResolver($giocatore);
+
+            if ($weight <= 0) {
+                continue;
+            }
+
+            $weighted[] = [
+                'ID' => $id,
+                'weight' => $weight,
+            ];
+
+            $totalWeight += $weight;
+        }
+
+        if ($weighted === [] || $totalWeight <= 0) {
+            return $this->pickRandomPlayerId($giocatori);
+        }
+
+        $pick = (random_int(1, 1000000) / 1000000) * $totalWeight;
+        $running = 0.0;
+
+        foreach ($weighted as $entry) {
+            $running += $entry['weight'];
+
+            if ($pick <= $running) {
+                return $entry['ID'];
+            }
+        }
+
+        return (int) end($weighted)['ID'];
     }
 
-    private function pickRandomPlayerIdExcluding(array $giocatori, array $excludedIds): ?int
+    private function pesoGol(array $giocatore): float
     {
-        $filtrati = array_values(array_filter(
-            $giocatori,
-            static fn(array $g): bool => !in_array((int) ($g['ID'] ?? 0), $excludedIds, true)
-        ));
+        $attacco = (float) ($giocatore['Attacco'] ?? 0);
+        $difesa = (float) ($giocatore['Difesa'] ?? 0);
+        $posizione = (string) ($giocatore['Posizione'] ?? '');
 
-        return $this->pickRandomPlayerId($filtrati);
+        $bonusRuolo = match ($posizione) {
+            'ATT' => 2.2,
+            'AS', 'AD' => 1.8,
+            'TRQ' => 1.7,
+            'CL', 'CR' => 1.35,
+            'CC' => 1.15,
+            'MED' => 0.9,
+            'TD', 'TS' => 0.75,
+            'DC' => 0.55,
+            'POR' => 0.1,
+            default => 1.0,
+        };
+
+        return max(0.1, ($attacco * 1.8 + $difesa * 0.2) * $bonusRuolo);
+    }
+
+    private function pesoAssist(array $giocatore): float
+    {
+        $attacco = (float) ($giocatore['Attacco'] ?? 0);
+        $difesa = (float) ($giocatore['Difesa'] ?? 0);
+        $posizione = (string) ($giocatore['Posizione'] ?? '');
+
+        $bonusRuolo = match ($posizione) {
+            'TRQ' => 2.0,
+            'AS', 'AD' => 1.9,
+            'CL', 'CR' => 1.7,
+            'CC' => 1.5,
+            'ATT' => 1.3,
+            'MED' => 1.1,
+            'TD', 'TS' => 1.15,
+            'DC' => 0.45,
+            'POR' => 0.05,
+            default => 1.0,
+        };
+
+        return max(0.1, (($attacco * 1.2) + ($difesa * 0.45)) * $bonusRuolo);
+    }
+
+    private function pesoRigore(array $giocatore): float
+    {
+        $attacco = (float) ($giocatore['Attacco'] ?? 0);
+        $posizione = (string) ($giocatore['Posizione'] ?? '');
+
+        $bonusRuolo = match ($posizione) {
+            'ATT' => 2.0,
+            'TRQ' => 1.8,
+            'AS', 'AD' => 1.6,
+            'CL', 'CR' => 1.25,
+            'CC' => 1.0,
+            default => 0.6,
+        };
+
+        return max(0.1, $attacco * $bonusRuolo);
+    }
+
+    private function pesoCartellino(array $giocatore): float
+    {
+        $attacco = (float) ($giocatore['Attacco'] ?? 0);
+        $difesa = (float) ($giocatore['Difesa'] ?? 0);
+        $posizione = (string) ($giocatore['Posizione'] ?? '');
+
+        $bonusRuolo = match ($posizione) {
+            'DC' => 2.0,
+            'TD', 'TS' => 1.8,
+            'MED' => 1.7,
+            'CC' => 1.35,
+            'CL', 'CR' => 1.1,
+            'ATT', 'AS', 'AD', 'TRQ' => 0.8,
+            'POR' => 0.7,
+            default => 1.0,
+        };
+
+        return max(0.1, (($difesa * 1.4) + ($attacco * 0.2)) * $bonusRuolo);
+    }
+
+    private function pesoAutogol(array $giocatore): float
+    {
+        $difesa = (float) ($giocatore['Difesa'] ?? 0);
+        $posizione = (string) ($giocatore['Posizione'] ?? '');
+
+        $bonusRuolo = match ($posizione) {
+            'POR' => 1.8,
+            'DC' => 2.2,
+            'TD', 'TS' => 1.7,
+            'MED' => 1.2,
+            default => 0.35,
+        };
+
+        return max(0.1, ($difesa + 1) * $bonusRuolo);
     }
 
     private function randomMinuto(): int
@@ -328,8 +496,15 @@ final class EventGeneratorService
         return random_int(1, 100) <= $percent;
     }
 
-    public function cancellaPerPartita(int $idPartita): void
+    private function json(array $payload): ?string
     {
-        $this->partitaEventi->deleteByPartita($idPartita);
+        try {
+            return json_encode(
+                $payload,
+                JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+            );
+        } catch (JsonException) {
+            return null;
+        }
     }
 }

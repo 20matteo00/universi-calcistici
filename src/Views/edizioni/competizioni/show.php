@@ -456,8 +456,6 @@ function uc_style_squadra(?string $jsonColori): array
 
                                                                     <?php if (!$isCasa): ?>
                                                                         <div class="col-5 text-start">
-                                                                            <?= $assistHtml ?>
-
                                                                             <div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded bg-light border">
                                                                                 <?= $eventoUi['icon'] ?>
                                                                                 <span class="small">
@@ -467,6 +465,8 @@ function uc_style_squadra(?string $jsonColori): array
                                                                                     <?php endif; ?>
                                                                                 </span>
                                                                             </div>
+                                                                            
+                                                                            <?= $assistHtml ?>
                                                                         </div>
                                                                     <?php else: ?>
                                                                         <div class="col-5"></div>

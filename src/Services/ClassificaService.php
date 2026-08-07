@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Partita;
+use App\Models\PartitaEvento;
 
 class ClassificaService
 {
@@ -559,5 +560,74 @@ class ClassificaService
         }
 
         $stats['Punti'] += $puntiSconfitta;
+    }
+
+    public function calcolaStatisticheGiocatori(
+        int $idEdizioneCompetizione,
+        int $giornataDa,
+        int $giornataA
+    ): array {
+        $model = new PartitaEvento();
+        $righe = $model->statisticheGiocatoriPerCompetizioneEIntervallo(
+            $idEdizioneCompetizione,
+            $giornataDa,
+            $giornataA
+        );
+
+        foreach ($righe as &$riga) {
+            $riga['Gol'] = (int) ($riga['Gol'] ?? 0);
+            $riga['GolRigore'] = (int) ($riga['GolRigore'] ?? 0);
+            $riga['Autogol'] = (int) ($riga['Autogol'] ?? 0);
+            $riga['Assist'] = (int) ($riga['Assist'] ?? 0);
+            $riga['Ammonizioni'] = (int) ($riga['Ammonizioni'] ?? 0);
+            $riga['Espulsioni'] = (int) ($riga['Espulsioni'] ?? 0);
+            $riga['RigoriSbagliati'] = (int) ($riga['RigoriSbagliati'] ?? 0);
+            $riga['EventiTotali'] = (int) ($riga['EventiTotali'] ?? 0);
+            $riga['NomeGiocatore'] = (string) ($riga['NomeGiocatore'] ?? '');
+            $riga['NomeSquadra'] = (string) ($riga['NomeSquadra'] ?? '');
+            $riga['Colori'] = $this->decodificaColori((string) ($riga['ColoriSquadra'] ?? '{}'));
+            $riga['PuntiDisciplina'] = ($riga['Ammonizioni'] * 1) + ($riga['Espulsioni'] * 3);
+        }
+        unset($riga);
+
+        return [
+            'marcatori' => $this->ordinaStatisticheGiocatori($righe, 'marcatori'),
+            'assist' => $this->ordinaStatisticheGiocatori($righe, 'assist'),
+            'disciplina' => $this->ordinaStatisticheGiocatori($righe, 'disciplina'),
+            'eventi' => $this->ordinaStatisticheGiocatori($righe, 'eventi'),
+        ];
+    }
+
+    private function ordinaStatisticheGiocatori(array $righe, string $vista): array
+    {
+        usort($righe, function (array $a, array $b) use ($vista): int {
+            return match ($vista) {
+                'assist' => ($b['Assist'] <=> $a['Assist'])
+                    ?: ($b['Gol'] <=> $a['Gol'])
+                    ?: ($a['NomeGiocatore'] <=> $b['NomeGiocatore']),
+
+                'disciplina' => ($b['PuntiDisciplina'] <=> $a['PuntiDisciplina'])
+                    ?: ($b['Espulsioni'] <=> $a['Espulsioni'])
+                    ?: ($b['Ammonizioni'] <=> $a['Ammonizioni'])
+                    ?: ($a['NomeGiocatore'] <=> $b['NomeGiocatore']),
+
+                'eventi' => ($b['EventiTotali'] <=> $a['EventiTotali'])
+                    ?: ($b['Gol'] <=> $a['Gol'])
+                    ?: ($b['Assist'] <=> $a['Assist'])
+                    ?: ($a['NomeGiocatore'] <=> $b['NomeGiocatore']),
+
+                default => ($b['Gol'] <=> $a['Gol'])
+                    ?: ($b['GolRigore'] <=> $a['GolRigore'])
+                    ?: ($b['Assist'] <=> $a['Assist'])
+                    ?: ($a['NomeGiocatore'] <=> $b['NomeGiocatore']),
+            };
+        });
+
+        foreach ($righe as $indice => &$riga) {
+            $riga['Posizione'] = $indice + 1;
+        }
+        unset($riga);
+
+        return $righe;
     }
 }
