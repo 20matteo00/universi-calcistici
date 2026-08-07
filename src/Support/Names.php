@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-class Names
+final class Names
 {
     public static function firstNames(): array
     {
