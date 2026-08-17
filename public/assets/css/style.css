@@ -44,24 +44,6 @@ a:hover {
 }
 
 /* Bootstrap tune */
-.card {
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-}
-
-.card-header {
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-}
-
-.form-control,
-.form-select,
-.btn,
-.alert,
-.dropdown-menu {
-    border-radius: var(--radius-sm);
-}
-
 .table td,
 .table th {
     vertical-align: middle;

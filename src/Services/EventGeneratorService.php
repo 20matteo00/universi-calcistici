@@ -135,12 +135,14 @@ final class EventGeneratorService
     ): array {
         $eventi = [];
 
+        $minutiGol = $this->generaMinutiUniciGol($goalCasa + $goalTrasferta);
+
         for ($i = 0; $i < $goalCasa; $i++) {
             $eventi[] = [
                 'IDPartita' => $idPartita,
                 'IDSquadra' => $idSquadraCasa,
                 'TipoSkeleton' => 'gol',
-                'Minuto' => $this->randomMinuto(),
+                'Minuto' => array_shift($minutiGol),
             ];
         }
 
@@ -149,7 +151,7 @@ final class EventGeneratorService
                 'IDPartita' => $idPartita,
                 'IDSquadra' => $idSquadraTrasferta,
                 'TipoSkeleton' => 'gol',
-                'Minuto' => $this->randomMinuto(),
+                'Minuto' => array_shift($minutiGol),
             ];
         }
 
@@ -596,5 +598,20 @@ final class EventGeneratorService
         } catch (JsonException) {
             return null;
         }
+    }
+
+    private function generaMinutiUniciGol(int $numeroGol): array
+    {
+        if ($numeroGol <= 0) {
+            return [];
+        }
+
+        $pool = range(1, 90);
+        shuffle($pool);
+
+        $minuti = array_slice($pool, 0, min($numeroGol, count($pool)));
+        sort($minuti);
+
+        return $minuti;
     }
 }

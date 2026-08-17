@@ -61,71 +61,75 @@ function uc_style_squadra(?string $jsonColori): array
 ?>
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars((string) ($competizione['NomeCompetizione'] ?? 'Competizione')) ?></title>
     <?php require __DIR__ . '/../../partials/link.php'; ?>
 </head>
+
 <body>
-<div class="container py-4 competizione-page">
-    <div class="d-flex flex-wrap align-items-start gap-3 mb-3">
-        <div>
-            <a
-                href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni"
-                class="link-secondary text-decoration-none d-inline-block mb-2">
-                ← Torna alle competizioni
-            </a>
 
-            <h1 class="h2 mb-1"><?= htmlspecialchars((string) ($competizione['NomeCompetizione'] ?? 'Competizione')) ?></h1>
-            <p class="text-muted mb-0">
-                Edizione <?= htmlspecialchars((string) ($edizione['Nome'] ?? '')) ?>
-                · <?= htmlspecialchars((string) ($competizione['Tipo'] ?? '')) ?>
-                · <?= count($blocchiPartite) ?> blocchi
-                · <?= $totalePartite ?> partite
-            </p>
-        </div>
-
-        <div class="ms-lg-auto d-flex flex-wrap gap-2 uc-page-tools">
-            <?php if ($isLega): ?>
+    <div class="container py-4 competizione-page">
+        <div class="d-flex flex-wrap align-items-start gap-3 mb-3">
+            <div>
                 <a
-                    href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/classifica"
-                    class="btn btn-outline-secondary">
-                    Vai alla classifica
+                    href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni"
+                    class="link-secondary text-decoration-none d-inline-block mb-2">
+                    ← Torna alle competizioni
                 </a>
-            <?php endif; ?>
-        </div>
-    </div>
 
-    <?php if ($isEliminazioneDiretta && !empty($statoEliminazione['bloccanti'])): ?>
-        <div class="alert alert-warning mb-4" id="warning-eliminazione">
-            <strong>Avanzamento bloccato.</strong> Alcuni accoppiamenti sono ancora in parità o incompleti.
-            <ul class="mb-0 mt-2">
-                <?php foreach ($statoEliminazione['bloccanti'] as $bloccoErrore): ?>
-                    <li>
-                        Accoppiamento <?= (int) ($bloccoErrore['numero_accoppiamento'] ?? 0) ?>:
-                        <?= htmlspecialchars((string) ($bloccoErrore['motivo'] ?? 'Non disponibile')) ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
+                <h1 class="h2 mb-1"><?= htmlspecialchars((string) ($competizione['NomeCompetizione'] ?? 'Competizione')) ?></h1>
+                <p class="text-muted mb-0">
+                    Edizione <?= htmlspecialchars((string) ($edizione['Nome'] ?? '')) ?>
+                    · <?= htmlspecialchars((string) ($competizione['Tipo'] ?? '')) ?>
+                    · <?= count($blocchiPartite) ?> blocchi
+                    · <?= $totalePartite ?> partite
+                </p>
+            </div>
 
-    <?php if ($isEliminazioneDiretta && empty($statoEliminazione['bloccanti']) && !empty($statoEliminazione['turno'])): ?>
+            <div class="ms-lg-auto d-flex flex-wrap gap-2 uc-page-tools">
+                <?php if ($isLega): ?>
+                    <a
+                        href="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/classifica"
+                        class="btn btn-outline-secondary">
+                        Vai alla classifica
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php if ($isEliminazioneDiretta && !empty($statoEliminazione['bloccanti'])): ?>
+            <div class="alert alert-warning mb-4" id="warning-eliminazione">
+                <strong>Avanzamento bloccato.</strong> Alcuni accoppiamenti sono ancora in parità o incompleti.
+                <ul class="mb-0 mt-2">
+                    <?php foreach ($statoEliminazione['bloccanti'] as $bloccoErrore): ?>
+                        <li>
+                            Accoppiamento <?= (int) ($bloccoErrore['numero_accoppiamento'] ?? 0) ?>:
+                            <?= htmlspecialchars((string) ($bloccoErrore['motivo'] ?? 'Non disponibile')) ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($isEliminazioneDiretta && empty($statoEliminazione['bloccanti']) && !empty($statoEliminazione['turno'])): ?>
+            <form
+                method="post"
+                action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/eliminazione/avanza"
+                class="mb-4">
+                <button type="submit" class="btn btn-primary">
+                    Passa alla fase successiva
+                </button>
+            </form>
+        <?php endif; ?>
+
         <form
             method="post"
-            action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/eliminazione/avanza"
-            class="mb-4">
-            <button type="submit" class="btn btn-primary">
-                Passa alla fase successiva
-            </button>
+            action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/salva-tutte"
+            id="form-salva-tutto">
         </form>
-    <?php endif; ?>
-
-    <form
-        method="post"
-        action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/salva-tutte"
-        id="form-salva-tutto">
 
         <div class="card uc-page-hero shadow-sm border-0 mb-4">
             <div class="card-body p-4">
@@ -143,10 +147,13 @@ function uc_style_squadra(?string $jsonColori): array
 
                     <?php if ($isLega): ?>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="submit" class="btn btn-primary">Salva tutto</button>
+                            <button type="submit" form="form-salva-tutto" class="btn btn-primary">
+                                Salva tutto
+                            </button>
 
                             <button
                                 type="submit"
+                                form="form-salva-tutto"
                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/simula-tutte"
                                 formmethod="post"
                                 class="btn btn-outline-primary">
@@ -155,6 +162,7 @@ function uc_style_squadra(?string $jsonColori): array
 
                             <button
                                 type="submit"
+                                form="form-salva-tutto"
                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/reset-tutte"
                                 formmethod="post"
                                 class="btn btn-outline-danger">
@@ -219,6 +227,7 @@ function uc_style_squadra(?string $jsonColori): array
                                         <?php if ($faseBlocco !== ''): ?>
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode($faseBlocco) ?>/giornate/<?= (int) $blocco['giornata'] ?>/salva"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-primary">
@@ -227,6 +236,7 @@ function uc_style_squadra(?string $jsonColori): array
 
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode($faseBlocco) ?>/giornate/<?= (int) $blocco['giornata'] ?>/simula"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-outline-primary">
@@ -235,6 +245,7 @@ function uc_style_squadra(?string $jsonColori): array
 
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/fasi/<?= urlencode($faseBlocco) ?>/giornate/<?= (int) $blocco['giornata'] ?>/reset"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-outline-danger">
@@ -243,6 +254,7 @@ function uc_style_squadra(?string $jsonColori): array
                                         <?php else: ?>
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/salva"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-primary">
@@ -251,6 +263,7 @@ function uc_style_squadra(?string $jsonColori): array
 
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/simula"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-outline-primary">
@@ -259,6 +272,7 @@ function uc_style_squadra(?string $jsonColori): array
 
                                             <button
                                                 type="submit"
+                                                form="form-salva-tutto"
                                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/giornate/<?= (int) $blocco['giornata'] ?>/reset"
                                                 formmethod="post"
                                                 class="btn btn-sm btn-outline-danger">
@@ -297,6 +311,10 @@ function uc_style_squadra(?string $jsonColori): array
 
                                         $coloriCasa = uc_style_squadra($partita['ColoriSquadraCasa'] ?? null);
                                         $coloriTrasferta = uc_style_squadra($partita['ColoriSquadraTrasferta'] ?? null);
+
+                                        $singleFormId = 'form-salva-partita-' . (int) $partita['ID'];
+                                        $inputCasaId = 'goal-casa-' . (int) $partita['ID'];
+                                        $inputTrasfertaId = 'goal-trasferta-' . (int) $partita['ID'];
                                         ?>
                                         <li class="list-group-item border-0 border-bottom py-2 px-2 overflow-auto" id="<?= (int) $blocco['giornata'] ?>-<?= (int) $partita['ID'] ?>">
                                             <div class="row flex-nowrap align-items-center g-1 small" style="min-width: 560px;">
@@ -315,10 +333,12 @@ function uc_style_squadra(?string $jsonColori): array
                                                         <div class="col-auto">
                                                             <div class="input-group input-group-sm flex-nowrap">
                                                                 <input
+                                                                    id="<?= htmlspecialchars($inputCasaId) ?>"
                                                                     type="number"
                                                                     min="0"
                                                                     max="99"
                                                                     name="partite[<?= (int) $partita['ID'] ?>][goal_casa]"
+                                                                    form="form-salva-tutto"
                                                                     value="<?= $goalCasa !== null ? (int) $goalCasa : '' ?>"
                                                                     class="form-control text-center fw-semibold px-0 js-goal-casa"
                                                                     data-partita-id="<?= (int) $partita['ID'] ?>"
@@ -329,10 +349,12 @@ function uc_style_squadra(?string $jsonColori): array
                                                                 <span class="input-group-text px-1 py-0 border-0 bg-transparent">:</span>
 
                                                                 <input
+                                                                    id="<?= htmlspecialchars($inputTrasfertaId) ?>"
                                                                     type="number"
                                                                     min="0"
                                                                     max="99"
                                                                     name="partite[<?= (int) $partita['ID'] ?>][goal_trasferta]"
+                                                                    form="form-salva-tutto"
                                                                     value="<?= $goalTrasferta !== null ? (int) $goalTrasferta : '' ?>"
                                                                     class="form-control text-center fw-semibold px-0 js-goal-trasferta"
                                                                     data-partita-id="<?= (int) $partita['ID'] ?>"
@@ -372,34 +394,50 @@ function uc_style_squadra(?string $jsonColori): array
                                                             <form
                                                                 method="post"
                                                                 action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/risultato"
-                                                                class="m-0 js-form-salva-singola">
+                                                                id="<?= htmlspecialchars($singleFormId) ?>"
+                                                                class="d-none">
                                                                 <input type="hidden" name="id_partita" value="<?= (int) $partita['ID'] ?>">
                                                                 <input type="hidden" name="goal_casa" value="">
                                                                 <input type="hidden" name="goal_trasferta" value="">
-                                                                <button
-                                                                    type="submit"
-                                                                    class="btn btn-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 js-btn-salva-singola"
-                                                                    data-partita-id="<?= (int) $partita['ID'] ?>"
-                                                                    title="Salva"
-                                                                    style="width:34px; height:34px;">
-                                                                    <i class="bi bi-check-lg"></i>
-                                                                </button>
                                                             </form>
 
                                                             <button
                                                                 type="submit"
-                                                                formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/<?= (int) $partita['ID'] ?>/simula"
-                                                                formmethod="post"
+                                                                form="<?= htmlspecialchars($singleFormId) ?>"
+                                                                class="btn btn-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 js-btn-salva-singola"
+                                                                data-partita-id="<?= (int) $partita['ID'] ?>"
+                                                                data-form-id="<?= htmlspecialchars($singleFormId) ?>"
+                                                                title="Salva"
+                                                                style="width:34px; height:34px;">
+                                                                <i class="bi bi-check-lg"></i>
+                                                            </button>
+
+                                                            <form
+                                                                method="post"
+                                                                action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/<?= (int) $partita['ID'] ?>/simula"
+                                                                class="d-none"
+                                                                id="form-simula-partita-<?= (int) $partita['ID'] ?>">
+                                                            </form>
+
+                                                            <button
+                                                                type="submit"
+                                                                form="form-simula-partita-<?= (int) $partita['ID'] ?>"
                                                                 class="btn btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0"
                                                                 title="Simula"
                                                                 style="width:34px; height:34px;">
                                                                 <i class="bi bi-dice-3"></i>
                                                             </button>
 
+                                                            <form
+                                                                method="post"
+                                                                action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/<?= (int) $partita['ID'] ?>/reset"
+                                                                class="d-none"
+                                                                id="form-reset-partita-<?= (int) $partita['ID'] ?>">
+                                                            </form>
+
                                                             <button
                                                                 type="submit"
-                                                                formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/<?= (int) $partita['ID'] ?>/reset"
-                                                                formmethod="post"
+                                                                form="form-reset-partita-<?= (int) $partita['ID'] ?>"
                                                                 class="btn btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0"
                                                                 title="Elimina"
                                                                 style="width:34px; height:34px;">
@@ -550,52 +588,53 @@ function uc_style_squadra(?string $jsonColori): array
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-    </form>
-</div>
+    </div>
 
-<?php require __DIR__ . '/../../partials/script.php'; ?>
+    <?php require __DIR__ . '/../../partials/script.php'; ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.js-btn-salva-singola');
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const buttons = document.querySelectorAll('.js-btn-salva-singola');
+            buttons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const partitaId = button.getAttribute('data-partita-id');
+                    const formId = button.getAttribute('data-form-id');
+                    const form = formId ? document.getElementById(formId) : null;
 
-    buttons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            const partitaId = button.getAttribute('data-partita-id');
-            const form = button.closest('.js-form-salva-singola');
+                    if (!partitaId || !form) {
+                        return;
+                    }
 
-            if (!partitaId || !form) {
-                return;
-            }
+                    const inputCasa = document.querySelector('.js-goal-casa[data-partita-id="' + partitaId + '"]');
+                    const inputTrasferta = document.querySelector('.js-goal-trasferta[data-partita-id="' + partitaId + '"]');
+                    const hiddenCasa = form.querySelector('input[name="goal_casa"]');
+                    const hiddenTrasferta = form.querySelector('input[name="goal_trasferta"]');
 
-            const inputCasa = document.querySelector('.js-goal-casa[data-partita-id="' + partitaId + '"]');
-            const inputTrasferta = document.querySelector('.js-goal-trasferta[data-partita-id="' + partitaId + '"]');
-            const hiddenCasa = form.querySelector('input[name="goal_casa"]');
-            const hiddenTrasferta = form.querySelector('input[name="goal_trasferta"]');
+                    if (inputCasa && hiddenCasa) {
+                        hiddenCasa.value = inputCasa.value;
+                    }
 
-            if (inputCasa && hiddenCasa) {
-                hiddenCasa.value = inputCasa.value;
-            }
+                    if (inputTrasferta && hiddenTrasferta) {
+                        hiddenTrasferta.value = inputTrasferta.value;
+                    }
+                });
+            });
 
-            if (inputTrasferta && hiddenTrasferta) {
-                hiddenTrasferta.value = inputTrasferta.value;
+            if (window.location.hash) {
+                const target = document.querySelector(window.location.hash);
+
+                if (target) {
+                    setTimeout(function() {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }, 50);
+                }
             }
         });
-    });
+    </script>
 
-    if (window.location.hash) {
-        const target = document.querySelector(window.location.hash);
-
-        if (target) {
-            setTimeout(function () {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }, 50);
-        }
-    }
-});
-</script>
 </body>
+
 </html>
