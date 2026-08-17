@@ -87,7 +87,7 @@ class UniversoController
         $roseMinimeOk = (bool) ($verificaRose['ok'] ?? false);
 
         $totalePartecipantiCompetizioni = $this->universi->totalePartecipantiCompetizioni($id);
-        $coperturaCompetizioniOk = $totalePartecipantiCompetizioni >= $numeroSquadreUniverso;
+        $coperturaCompetizioniOk = $numeroSquadreUniverso > 0 && $totalePartecipantiCompetizioni >= $numeroSquadreUniverso;
 
         $dettaglioRose = $verificaRose;
 

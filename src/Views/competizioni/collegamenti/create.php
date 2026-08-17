@@ -11,7 +11,7 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crea collegamento tra competizioni</title>
-    <?php require __DIR__ . '/../partials/link.php'; ?>
+    <?php require __DIR__ . '/../../partials/link.php'; ?>
 </head>
 
 <body>
@@ -155,7 +155,7 @@ declare(strict_types=1);
             </div>
         </div>
     </div>
-    <?php require __DIR__ . '/../partials/script.php'; ?>
+    <?php require __DIR__ . '/../../partials/script.php'; ?>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('collegamentoForm');
