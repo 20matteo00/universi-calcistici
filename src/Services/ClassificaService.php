@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Partita;
+use App\Models\PartitaQuery;
 use App\Models\PartitaEvento;
 
 class ClassificaService
@@ -16,7 +16,7 @@ class ClassificaService
         array $struttura = [],
         ?string $filtro = null
     ): array {
-        $partitaModel = new Partita();
+        $partitaModel = new PartitaQuery();
         $partite = $partitaModel->partitePerCompetizioneEIntervallo(
             $idEdizioneCompetizione,
             $giornataDa,
@@ -33,7 +33,7 @@ class ClassificaService
         array $struttura = [],
         int $numeroGiri = 1
     ): array {
-        $partitaModel = new Partita();
+        $partitaModel = new PartitaQuery();
         $partite = $partitaModel->partitePerCompetizioneEIntervallo(
             $idEdizioneCompetizione,
             $giornataDa,
@@ -63,7 +63,7 @@ class ClassificaService
         int $idEdizioneCompetizione,
         array $struttura = []
     ): array {
-        $partitaModel = new Partita();
+        $partitaModel = new PartitaQuery();
         $giornate = $partitaModel->giornatePerCompetizione($idEdizioneCompetizione);
 
         if (empty($giornate)) {

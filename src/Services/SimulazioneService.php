@@ -4,18 +4,24 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Edizione;
+use App\Models\EdizioneCompetizione;
+use App\Models\EdizioneGiocatore;
+use App\Models\EdizioneSquadra;
 use App\Models\Partita;
 
 class SimulazioneService
 {
     private Partita $partite;
-    private Edizione $edizioni;
+    private EdizioneCompetizione $edizioneCompetizioni;
+    private EdizioneSquadra $edizioneSquadre;
+    private EdizioneGiocatore $edizioneGiocatori;
 
     public function __construct()
     {
         $this->partite = new Partita();
-        $this->edizioni = new Edizione();
+        $this->edizioneCompetizioni = new EdizioneCompetizione();
+        $this->edizioneSquadre = new EdizioneSquadra();
+        $this->edizioneGiocatori = new EdizioneGiocatore();
     }
 
     public function simulaPartita(int $idPartita): ?array
@@ -34,7 +40,7 @@ class SimulazioneService
             return null;
         }
 
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
 
         if ($competizione === null) {
             return null;
@@ -46,15 +52,15 @@ class SimulazioneService
             return null;
         }
 
-        $squadraCasa = $this->edizioni->findEdizioneSquadra($idEdizione, $idSquadraCasa);
-        $squadraTrasferta = $this->edizioni->findEdizioneSquadra($idEdizione, $idSquadraTrasferta);
+        $squadraCasa = $this->edizioneSquadre->findEdizioneSquadra($idEdizione, $idSquadraCasa);
+        $squadraTrasferta = $this->edizioneSquadre->findEdizioneSquadra($idEdizione, $idSquadraTrasferta);
 
         if ($squadraCasa === null || $squadraTrasferta === null) {
             return null;
         }
 
-        $rosaCasa = $this->edizioni->giocatoriAssegnatiASquadra($idEdizione, $idSquadraCasa);
-        $rosaTrasferta = $this->edizioni->giocatoriAssegnatiASquadra($idEdizione, $idSquadraTrasferta);
+        $rosaCasa = $this->edizioneGiocatori->giocatoriAssegnatiASquadra($idEdizione, $idSquadraCasa);
+        $rosaTrasferta = $this->edizioneGiocatori->giocatoriAssegnatiASquadra($idEdizione, $idSquadraTrasferta);
 
         $forzaCasa = $this->calcolaForzaSquadra($squadraCasa, $rosaCasa, true);
         $forzaTrasferta = $this->calcolaForzaSquadra($squadraTrasferta, $rosaTrasferta, false);
@@ -235,7 +241,7 @@ class SimulazioneService
             return null;
         }
 
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
 
         if ($competizione === null) {
             return null;
@@ -247,15 +253,15 @@ class SimulazioneService
             return null;
         }
 
-        $squadraCasa = $this->edizioni->findEdizioneSquadra($idEdizione, $idSquadraCasa);
-        $squadraTrasferta = $this->edizioni->findEdizioneSquadra($idEdizione, $idSquadraTrasferta);
+        $squadraCasa = $this->edizioneSquadre->findEdizioneSquadra($idEdizione, $idSquadraCasa);
+        $squadraTrasferta = $this->edizioneSquadre->findEdizioneSquadra($idEdizione, $idSquadraTrasferta);
 
         if ($squadraCasa === null || $squadraTrasferta === null) {
             return null;
         }
 
-        $rosaCasa = $this->edizioni->giocatoriAssegnatiASquadra($idEdizione, $idSquadraCasa);
-        $rosaTrasferta = $this->edizioni->giocatoriAssegnatiASquadra($idEdizione, $idSquadraTrasferta);
+        $rosaCasa = $this->edizioneGiocatori->giocatoriAssegnatiASquadra($idEdizione, $idSquadraCasa);
+        $rosaTrasferta = $this->edizioneGiocatori->giocatoriAssegnatiASquadra($idEdizione, $idSquadraTrasferta);
 
         $forzaCasa = $this->calcolaForzaSquadra($squadraCasa, $rosaCasa, true);
         $forzaTrasferta = $this->calcolaForzaSquadra($squadraTrasferta, $rosaTrasferta, false);

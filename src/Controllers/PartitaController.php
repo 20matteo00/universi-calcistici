@@ -6,32 +6,32 @@ namespace App\Controllers;
 
 use App\Config\Database;
 use App\Http\Request;
-use App\Models\Edizione;
-use App\Models\Partita;
-use App\Models\Universo;
-use App\Services\EventGeneratorService;
-use App\Services\SimulazioneService;
-use App\Services\EliminazioneDirettaService;
+use App\Models\PartitaQuery;
+use App\Services\Partite\PartitaContextService;
+use App\Services\Partite\PartitaLockService;
+use App\Services\Partite\PartitaResetService;
+use App\Services\Partite\PartitaResultService;
+use App\Services\Partite\PartitaSimulationService;
 
 final class PartitaController
 {
-    private Universo $universi;
-    private Edizione $edizioni;
-    private Partita $partite;
-    private SimulazioneService $simulazione;
-    private EventGeneratorService $eventi;
-    private EliminazioneDirettaService $eliminazioneDiretta;
+    private PartitaQuery $partiteQuery;
+    private PartitaContextService $partitaContext;
+    private PartitaResultService $partitaResult;
+    private PartitaSimulationService $partitaSimulation;
+    private PartitaResetService $partitaReset;
+    private PartitaLockService $partitaLock;
 
     public function __construct()
     {
         Database::getConnessione();
 
-        $this->universi = new Universo();
-        $this->edizioni = new Edizione();
-        $this->partite = new Partita();
-        $this->simulazione = new SimulazioneService();
-        $this->eventi = new EventGeneratorService();
-        $this->eliminazioneDiretta = new EliminazioneDirettaService();
+        $this->partiteQuery = new PartitaQuery();
+        $this->partitaContext = new PartitaContextService();
+        $this->partitaResult = new PartitaResultService();
+        $this->partitaSimulation = new PartitaSimulationService();
+        $this->partitaReset = new PartitaResetService();
+        $this->partitaLock = new PartitaLockService();
     }
 
     private function partiteFaseGiornata(
@@ -39,18 +39,11 @@ final class PartitaController
         string $fase,
         int $giornata
     ): array {
-        $gruppi = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
+        $gruppi = $this->partiteQuery->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
         $chiave = mb_strtolower(trim($fase)) . '-' . $giornata;
 
         return $gruppi[$chiave]['partite'] ?? [];
     }
-
-    /*
-     * =========================================================
-     * SINGOLA PARTITA
-     * Queste operazioni forzano sempre l'azione.
-     * =========================================================
-     */
 
     public function salvaRisultato(Request $request, array $params): void
     {
@@ -58,11 +51,13 @@ final class PartitaController
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -76,31 +71,27 @@ final class PartitaController
             return;
         }
 
-        $partita = $this->partite->find($idPartita);
+        $partita = $this->partitaContext->trovaPartitaDellaCompetizione(
+            $idPartita,
+            $idEdizioneCompetizione
+        );
 
-        if (
-            !$partita ||
-            (int) ($partita['IDEdizioneCompetizione'] ?? 0) !== $idEdizioneCompetizione
-        ) {
+        if (!$partita) {
             http_response_code(404);
             echo 'Partita non trovata';
             return;
         }
 
-        if ($this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partita
-        )) {
-            return;
+        if ($this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partita)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partita)
+            );
         }
 
-        /*
-         * true = forza la rigenerazione degli eventi anche se
-         * il risultato è uguale a quello già presente.
-         */
-        $this->salvaRisultatoPartitaById(
+        $this->partitaResult->salvaRisultato(
             $idPartita,
             $goalCasaRaw,
             $goalTrasfertaRaw,
@@ -111,7 +102,7 @@ final class PartitaController
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione,
-            $this->anchorDaPartita($partita)
+            $this->partitaContext->anchorDaPartita($partita)
         );
     }
 
@@ -122,44 +113,43 @@ final class PartitaController
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
         $idPartita = (int) ($params['idPartita'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
-        $partita = $this->partite->find($idPartita);
+        $partita = $this->partitaContext->trovaPartitaDellaCompetizione(
+            $idPartita,
+            $idEdizioneCompetizione
+        );
 
-        if (
-            !$partita ||
-            (int) ($partita['IDEdizioneCompetizione'] ?? 0) !== $idEdizioneCompetizione
-        ) {
+        if (!$partita) {
             http_response_code(404);
             echo 'Partita non trovata';
             return;
         }
 
-        if ($this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partita
-        )) {
-            return;
+        if ($this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partita)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partita)
+            );
         }
 
-        /*
-         * true = forza sempre la simulazione della singola partita.
-         */
-        $this->simulaPartitaById($idPartita, true);
+        $this->partitaSimulation->simula($idPartita, true);
 
         $this->redirectCompetizione(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione,
-            $this->anchorDaPartita($partita)
+            $this->partitaContext->anchorDaPartita($partita)
         );
     }
 
@@ -170,50 +160,45 @@ final class PartitaController
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
         $idPartita = (int) ($params['idPartita'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
-        $partita = $this->partite->find($idPartita);
+        $partita = $this->partitaContext->trovaPartitaDellaCompetizione(
+            $idPartita,
+            $idEdizioneCompetizione
+        );
 
-        if (
-            !$partita ||
-            (int) ($partita['IDEdizioneCompetizione'] ?? 0) !== $idEdizioneCompetizione
-        ) {
+        if (!$partita) {
             http_response_code(404);
             echo 'Partita non trovata';
             return;
         }
 
-        if ($this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partita
-        )) {
-            return;
+        if ($this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partita)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partita)
+            );
         }
 
-        $this->resetPartitaById($idPartita);
+        $this->partitaReset->resetta($idPartita);
 
         $this->redirectCompetizione(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione,
-            $this->anchorDaPartita($partita)
+            $this->partitaContext->anchorDaPartita($partita)
         );
     }
-
-    /*
-     * =========================================================
-     * GIORNATA
-     * Le partite già giocate vengono ignorate.
-     * =========================================================
-     */
 
     public function salvaGiornata(Request $request, array $params): void
     {
@@ -222,11 +207,13 @@ final class PartitaController
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -236,9 +223,7 @@ final class PartitaController
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
-
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
         $payloadPartite = $_POST['partite'] ?? [];
 
@@ -260,10 +245,7 @@ final class PartitaController
             $goalCasaRaw = $payloadPartite[$idPartita]['goal_casa'] ?? '';
             $goalTrasfertaRaw = $payloadPartite[$idPartita]['goal_trasferta'] ?? '';
 
-            /*
-             * false = se il risultato è identico, non rigenerare eventi.
-             */
-            $this->salvaRisultatoPartitaById(
+            $this->partitaResult->salvaRisultato(
                 $idPartita,
                 $goalCasaRaw,
                 $goalTrasfertaRaw,
@@ -274,15 +256,10 @@ final class PartitaController
         $anchor = 'giornata-' . $giornata;
 
         if ($partite !== []) {
-            $anchor = $this->anchorDaPartita($partite[0]);
+            $anchor = $this->partitaContext->anchorDaPartita($partite[0]);
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function simulaGiornata(Request $request, array $params): void
@@ -292,11 +269,13 @@ final class PartitaController
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -306,9 +285,7 @@ final class PartitaController
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
-
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
 
         foreach ($partite as $partita) {
@@ -318,24 +295,16 @@ final class PartitaController
                 continue;
             }
 
-            /*
-             * false = se è già giocata, viene ignorata.
-             */
-            $this->simulaPartitaById($idPartita, false);
+            $this->partitaSimulation->simula($idPartita, false);
         }
 
         $anchor = 'giornata-' . $giornata;
 
         if ($partite !== []) {
-            $anchor = $this->anchorDaPartita($partite[0]);
+            $anchor = $this->partitaContext->anchorDaPartita($partite[0]);
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function resetGiornata(Request $request, array $params): void
@@ -345,11 +314,13 @@ final class PartitaController
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -359,31 +330,24 @@ final class PartitaController
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
-
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
 
         foreach ($partite as $partita) {
             $idPartita = (int) ($partita['ID'] ?? 0);
 
             if ($idPartita > 0) {
-                $this->resetPartitaById($idPartita);
+                $this->partitaReset->resetta($idPartita);
             }
         }
 
         $anchor = 'giornata-' . $giornata;
 
         if ($partite !== []) {
-            $anchor = $this->anchorDaPartita($partite[0]);
+            $anchor = $this->partitaContext->anchorDaPartita($partite[0]);
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function salvaFaseGiornata(Request $request, array $params): void
@@ -394,11 +358,13 @@ final class PartitaController
         $fase = trim((string) ($params['fase'] ?? ''));
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -410,13 +376,16 @@ final class PartitaController
 
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
 
-        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partite[0]
-        )) {
-            return;
+        if (
+            $partite !== [] &&
+            $this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partite[0])
+        ) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partite[0])
+            );
         }
 
         $payloadPartite = $_POST['partite'] ?? [];
@@ -439,7 +408,7 @@ final class PartitaController
             $goalCasaRaw = $payloadPartite[$idPartita]['goal_casa'] ?? '';
             $goalTrasfertaRaw = $payloadPartite[$idPartita]['goal_trasferta'] ?? '';
 
-            $this->salvaRisultatoPartitaById(
+            $this->partitaResult->salvaRisultato(
                 $idPartita,
                 $goalCasaRaw,
                 $goalTrasfertaRaw,
@@ -447,14 +416,9 @@ final class PartitaController
             );
         }
 
-        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+        $anchor = $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata);
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function simulaFaseGiornata(Request $request, array $params): void
@@ -465,11 +429,13 @@ final class PartitaController
         $fase = trim((string) ($params['fase'] ?? ''));
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -480,13 +446,17 @@ final class PartitaController
         }
 
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
-        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partite[0]
-        )) {
-            return;
+
+        if (
+            $partite !== [] &&
+            $this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partite[0])
+        ) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partite[0])
+            );
         }
 
         foreach ($partite as $partita) {
@@ -496,17 +466,12 @@ final class PartitaController
                 continue;
             }
 
-            $this->simulaPartitaById($idPartita, false);
+            $this->partitaSimulation->simula($idPartita, false);
         }
 
-        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+        $anchor = $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata);
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     public function resetFaseGiornata(Request $request, array $params): void
@@ -517,11 +482,13 @@ final class PartitaController
         $fase = trim((string) ($params['fase'] ?? ''));
         $giornata = (int) ($params['giornata'] ?? 0);
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
@@ -532,39 +499,31 @@ final class PartitaController
         }
 
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
-        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $partite[0]
-        )) {
-            return;
+
+        if (
+            $partite !== [] &&
+            $this->partitaLock->turnoEliminazioneBloccato($idEdizioneCompetizione, $partite[0])
+        ) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione,
+                $this->partitaContext->anchorDaPartita($partite[0])
+            );
         }
 
         foreach ($partite as $partita) {
             $idPartita = (int) ($partita['ID'] ?? 0);
 
             if ($idPartita > 0) {
-                $this->resetPartitaById($idPartita);
+                $this->partitaReset->resetta($idPartita);
             }
         }
 
-        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+        $anchor = $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata);
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $anchor
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
-
-    /*
-     * =========================================================
-     * TUTTE LE PARTITE
-     * Le partite già giocate vengono ignorate.
-     * =========================================================
-     */
 
     public function salvaTutte(Request $request, array $params): void
     {
@@ -572,26 +531,21 @@ final class PartitaController
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
 
-        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
-            $this->redirectCompetizione(
-                $idUniverso,
-                $idEdizione,
-                $idEdizioneCompetizione
-            );
-            return;
+        if ($this->partitaContext->isCompetizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
         }
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
-
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $payloadPartite = $_POST['partite'] ?? [];
 
         if (!is_array($payloadPartite)) {
@@ -613,10 +567,7 @@ final class PartitaController
                 $goalCasaRaw = $payloadPartite[$idPartita]['goal_casa'] ?? '';
                 $goalTrasfertaRaw = $payloadPartite[$idPartita]['goal_trasferta'] ?? '';
 
-                /*
-                 * false = se il risultato è identico, non rigenerare eventi.
-                 */
-                $this->salvaRisultatoPartitaById(
+                $this->partitaResult->salvaRisultato(
                     $idPartita,
                     $goalCasaRaw,
                     $goalTrasfertaRaw,
@@ -625,11 +576,7 @@ final class PartitaController
             }
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
     }
 
     public function simulaTutte(Request $request, array $params): void
@@ -638,25 +585,21 @@ final class PartitaController
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
 
-        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
-            $this->redirectCompetizione(
-                $idUniverso,
-                $idEdizione,
-                $idEdizioneCompetizione
-            );
-            return;
+        if ($this->partitaContext->isCompetizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
         }
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 
         foreach ($partitePerGiornata as $partite) {
             foreach ($partite as $partita) {
@@ -666,18 +609,11 @@ final class PartitaController
                     continue;
                 }
 
-                /*
-                 * false = se è già giocata, viene ignorata.
-                 */
-                $this->simulaPartitaById($idPartita, false);
+                $this->partitaSimulation->simula($idPartita, false);
             }
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione
-        );
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
     }
 
     public function resetTutte(Request $request, array $params): void
@@ -686,218 +622,33 @@ final class PartitaController
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
 
-        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
-            $this->redirectCompetizione(
-                $idUniverso,
-                $idEdizione,
-                $idEdizioneCompetizione
-            );
-            return;
+        if ($this->partitaContext->isCompetizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
         }
 
-        if (!$this->validaContestoCompetizione(
+        if (!$this->partitaContext->contestoCompetizioneValido(
             $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione
         )) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
             return;
         }
 
-        $partitePerGiornata =
-            $this->partite->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
+        $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 
         foreach ($partitePerGiornata as $partite) {
             foreach ($partite as $partita) {
                 $idPartita = (int) ($partita['ID'] ?? 0);
 
                 if ($idPartita > 0) {
-                    $this->resetPartitaById($idPartita);
+                    $this->partitaReset->resetta($idPartita);
                 }
             }
         }
 
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione
-        );
-    }
-
-    /*
-     * =========================================================
-     * LOGICA PRIVATA
-     * =========================================================
-     */
-
-    private function simulaPartitaById(
-        int $idPartita,
-        bool $forza = true
-    ): bool {
-        $partita = $this->partite->find($idPartita);
-
-        if (!$partita) {
-            return false;
-        }
-
-        $stato = (string) ($partita['Stato'] ?? '');
-
-        /*
-         * Nelle simulazioni massive:
-         * una partita già giocata viene ignorata.
-         */
-        if (!$forza && $stato === 'giocata') {
-            return false;
-        }
-
-        $this->simulazione->simulaPartita($idPartita);
-        $this->eventi->rigeneraPerPartita($idPartita);
-
-        return true;
-    }
-
-    private function salvaRisultatoPartitaById(
-        int $idPartita,
-        mixed $goalCasaRaw,
-        mixed $goalTrasfertaRaw,
-        bool $forzaRigenerazione = true
-    ): bool {
-        $partita = $this->partite->find($idPartita);
-
-        if (!$partita) {
-            return false;
-        }
-
-        $goalCasaString = is_string($goalCasaRaw)
-            ? trim($goalCasaRaw)
-            : (string) $goalCasaRaw;
-
-        $goalTrasfertaString = is_string($goalTrasfertaRaw)
-            ? trim($goalTrasfertaRaw)
-            : (string) $goalTrasfertaRaw;
-
-        /*
-         * Se entrambi sono vuoti, non salvare.
-         */
-        if ($goalCasaString === '' && $goalTrasfertaString === '') {
-            return false;
-        }
-
-        /*
-         * Se ne manca uno solo, non salvare.
-         */
-        if ($goalCasaString === '' || $goalTrasfertaString === '') {
-            return false;
-        }
-
-        /*
-         * Devono essere numeri.
-         */
-        if (
-            !is_numeric($goalCasaString) ||
-            !is_numeric($goalTrasfertaString)
-        ) {
-            return false;
-        }
-
-        $goalCasa = (int) $goalCasaString;
-        $goalTrasferta = (int) $goalTrasfertaString;
-
-        /*
-         * Niente risultati negativi.
-         */
-        if ($goalCasa < 0 || $goalTrasferta < 0) {
-            return false;
-        }
-
-        /*
-         * Normalizzo i valori letti dal database.
-         * PDO potrebbe restituire "2" invece di 2.
-         */
-        $goalCasaAttuale = $partita['GoalCasa'] ?? null;
-        $goalTrasfertaAttuale = $partita['GoalTrasferta'] ?? null;
-
-        $goalCasaAttuale = $goalCasaAttuale === null
-            ? null
-            : (int) $goalCasaAttuale;
-
-        $goalTrasfertaAttuale = $goalTrasfertaAttuale === null
-            ? null
-            : (int) $goalTrasfertaAttuale;
-
-        $statoAttuale = (string) ($partita['Stato'] ?? '');
-
-        $risultatoInvariato =
-            $statoAttuale === 'giocata' &&
-            $goalCasaAttuale === $goalCasa &&
-            $goalTrasfertaAttuale === $goalTrasferta;
-
-        /*
-         * Nei salvataggi di giornata/tutti:
-         * stesso risultato = non fare assolutamente nulla.
-         */
-        if (!$forzaRigenerazione && $risultatoInvariato) {
-            return false;
-        }
-
-        $this->partite->aggiornaRisultatoPartita(
-            $idPartita,
-            $goalCasa,
-            $goalTrasferta,
-            'giocata'
-        );
-
-        /*
-         * La rigenerazione avviene:
-         * - sempre sulla singola partita;
-         * - solo se il risultato è cambiato nei salvataggi massivi.
-         */
-        $this->eventi->rigeneraPerPartita($idPartita);
-
-        return true;
-    }
-
-    private function resetPartitaById(int $idPartita): void
-    {
-        $this->partite->aggiornaRisultatoPartita(
-            $idPartita,
-            null,
-            null,
-            'programmata'
-        );
-
-        $this->eventi->cancellaPerPartita($idPartita);
-    }
-
-    private function validaContestoCompetizione(
-        int $idUniverso,
-        int $idEdizione,
-        int $idEdizioneCompetizione
-    ): bool {
-        $universo = $this->universi->find($idUniverso);
-        $edizione = $this->edizioni->find($idEdizione);
-        $competizione = $this->edizioni->findEdizioneCompetizione(
-            $idEdizioneCompetizione
-        );
-
-        if (!$universo || !$edizione || !$competizione) {
-            http_response_code(404);
-            echo 'Risorsa non trovata';
-            return false;
-        }
-
-        if ((int) ($edizione['IDUniverso'] ?? 0) !== $idUniverso) {
-            http_response_code(404);
-            echo 'Edizione non trovata per questo universo';
-            return false;
-        }
-
-        if ((int) ($competizione['IDEdizione'] ?? 0) !== $idEdizione) {
-            http_response_code(404);
-            echo 'Competizione non trovata per questa edizione';
-            return false;
-        }
-
-        return true;
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione);
     }
 
     private function redirectCompetizione(
@@ -920,76 +671,5 @@ final class PartitaController
 
         header('Location: ' . $url);
         exit;
-    }
-
-    private function anchorDaPartita(array $partita): string
-    {
-        $fase = $partita['Fase'] ?? null;
-        $giornata = (int) ($partita['Giornata'] ?? 0);
-
-        if ($fase === null || $fase === '') {
-            return 'giornata-' . $giornata;
-        }
-
-        return
-            'fase-' .
-            $this->slug((string) $fase) .
-            '-giornata-' .
-            $giornata;
-    }
-
-    private function slug(string $testo): string
-    {
-        $slug = mb_strtolower(trim($testo));
-
-        $slug = str_replace(
-            ['à', 'è', 'é', 'ì', 'ò', 'ù'],
-            ['a', 'e', 'e', 'i', 'o', 'u'],
-            $slug
-        );
-
-        $slug = preg_replace('/[^a-z0-9]+/u', '-', $slug) ?? '';
-
-        return trim($slug, '-');
-    }
-
-    private function bloccaSeTurnoEliminazioneCongelato(
-        int $idUniverso,
-        int $idEdizione,
-        int $idEdizioneCompetizione,
-        array $partita
-    ): bool {
-        $fase = trim((string) ($partita['Fase'] ?? ''));
-        if ($fase === '') {
-            return false;
-        }
-
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
-        $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
-
-        if ($tipoCompetizione !== 'eliminazione_diretta' && $tipoCompetizione !== 'eliminazione') {
-            return false;
-        }
-
-        if (!$this->eliminazioneDiretta->faseBloccata($idEdizioneCompetizione, $fase)) {
-            return false;
-        }
-
-        $this->redirectCompetizione(
-            $idUniverso,
-            $idEdizione,
-            $idEdizioneCompetizione,
-            $this->anchorDaPartita($partita)
-        );
-
-        return true;
-    }
-
-    private function competizioneEliminazioneDiretta(int $idEdizioneCompetizione): bool
-    {
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
-        $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
-
-        return $tipoCompetizione === 'eliminazione_diretta' || $tipoCompetizione === 'eliminazione';
     }
 }

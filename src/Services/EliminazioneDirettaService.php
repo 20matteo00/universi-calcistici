@@ -4,23 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Edizione;
+use App\Models\EdizioneCompetizione;
 use App\Models\Partita;
+use App\Models\PartitaQuery;
 
 final class EliminazioneDirettaService
 {
-    private Edizione $edizioni;
+    private EdizioneCompetizione $edizioneCompetizioni;
     private Partita $partite;
+    private PartitaQuery $partiteQuery;
 
     public function __construct()
     {
-        $this->edizioni = new Edizione();
+        $this->edizioneCompetizioni = new EdizioneCompetizione();
         $this->partite = new Partita();
+        $this->partiteQuery = new PartitaQuery();
     }
 
     public function analizzaTurnoCorrente(int $idEdizioneCompetizione): array
     {
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
 
         if (!$competizione) {
             return $this->rispostaBase(false);
@@ -30,7 +33,7 @@ final class EliminazioneDirettaService
         $finaleSecca = (bool) ($struttura['finale_secca'] ?? true);
         $finaleTerzoPosto = (bool) ($struttura['finale_terzo_posto'] ?? false);
 
-        $tutteLePartite = $this->partite->findByEdizioneCompetizione($idEdizioneCompetizione);
+        $tutteLePartite = $this->partiteQuery->findByEdizioneCompetizione($idEdizioneCompetizione);
         if ($tutteLePartite === []) {
             return [
                 'ok' => false,
@@ -122,7 +125,7 @@ final class EliminazioneDirettaService
             return $analisi;
         }
 
-        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
         if (!$competizione) {
             return $analisi;
         }
@@ -357,7 +360,7 @@ final class EliminazioneDirettaService
 
     private function esisteGiaFase(int $idEdizioneCompetizione, string $fase): bool
     {
-        $partite = $this->partite->findByEdizioneCompetizione($idEdizioneCompetizione);
+        $partite = $this->partiteQuery->findByEdizioneCompetizione($idEdizioneCompetizione);
 
         foreach ($partite as $partita) {
             if ((string) ($partita['Fase'] ?? '') === $fase) {
@@ -437,7 +440,7 @@ final class EliminazioneDirettaService
             return false;
         }
 
-        $partite = $this->partite->findByEdizioneCompetizione($idEdizioneCompetizione);
+        $partite = $this->partiteQuery->findByEdizioneCompetizione($idEdizioneCompetizione);
 
         foreach ($partite as $partita) {
             $fasePartita = trim((string) ($partita['Fase'] ?? ''));
@@ -455,7 +458,7 @@ final class EliminazioneDirettaService
 
     public function mappaFasiBloccate(int $idEdizioneCompetizione): array
     {
-        $partite = $this->partite->findByEdizioneCompetizione($idEdizioneCompetizione);
+        $partite = $this->partiteQuery->findByEdizioneCompetizione($idEdizioneCompetizione);
         $fasi = [];
 
         foreach ($partite as $partita) {

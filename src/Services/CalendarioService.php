@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Edizione;
+use App\Models\EdizioneCompetizione;
 use App\Models\Partita;
 
 class CalendarioService
 {
-    private Edizione $edizioni;
+    private EdizioneCompetizione $edizioneCompetizioni;
     private Partita $partite;
 
     public function __construct()
     {
-        $this->edizioni = new Edizione();
+        $this->edizioneCompetizioni = new EdizioneCompetizione();
         $this->partite = new Partita();
     }
 
     public function generaPerEdizione(int $idEdizione): void
     {
-        $competizioni = $this->edizioni->competizioniEdizione($idEdizione);
+        $competizioni = $this->edizioneCompetizioni->competizioniEdizione($idEdizione);
 
         foreach ($competizioni as $competizione) {
             $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
@@ -52,7 +52,7 @@ class CalendarioService
         $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
         $giri = $this->estraiNumeroGiriCompetizione($competizione);
 
-        $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
+        $squadreIscritte = $this->edizioneCompetizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
         $idsSquadre = array_map(
             fn(array $squadra): int => (int) ($squadra['IDSquadra'] ?? 0),
             $squadreIscritte
@@ -120,7 +120,7 @@ class CalendarioService
         $finaleSecca = (bool) ($struttura['finale_secca'] ?? true);
         $finaleTerzoPosto = (bool) ($struttura['finale_terzo_posto'] ?? false);
 
-        $squadreIscritte = $this->edizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
+        $squadreIscritte = $this->edizioneCompetizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
         $idsSquadre = array_map(
             fn(array $squadra): int => (int) ($squadra['IDSquadra'] ?? 0),
             $squadreIscritte
@@ -147,7 +147,6 @@ class CalendarioService
         $indice = 0;
         $numeroAccoppiamento = 0;
 
-        // BYE
         for ($slot = 1; $slot <= $qualificateDirette; $slot++) {
             $idSquadra = $idsSquadre[$indice] ?? 0;
             $indice++;
@@ -182,7 +181,6 @@ class CalendarioService
             ];
         }
 
-        // ACCOPPIAMENTI REALI
         for ($accoppiamento = 1; $accoppiamento <= $matchPrimoTurno; $accoppiamento++) {
             $squadraA = $idsSquadre[$indice] ?? 0;
             $squadraB = $idsSquadre[$indice + 1] ?? 0;
@@ -195,7 +193,6 @@ class CalendarioService
             $numeroAccoppiamento++;
             $giriTurno = ($nomeTurno === 'Finale' && $finaleSecca) ? 1 : $giri;
 
-            // QUI LA CORREZIONE: giornata = 1..giriTurno, NON 1..matchPrimoTurno
             for ($giro = 1; $giro <= $giriTurno; $giro++) {
                 $casa = $giro === 1 ? $squadraA : $squadraB;
                 $trasferta = $giro === 1 ? $squadraB : $squadraA;
@@ -205,7 +202,7 @@ class CalendarioService
                     'id_squadra_casa' => $casa,
                     'id_squadra_trasferta' => $trasferta,
                     'fase' => $nomeTurno,
-                    'giornata' => $giro, // ← CORRETTO
+                    'giornata' => $giro,
                     'girone' => null,
                     'stato' => 'programmata',
                     'dettagli' => json_encode([
