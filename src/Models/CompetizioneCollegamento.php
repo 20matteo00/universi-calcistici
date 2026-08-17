@@ -7,7 +7,7 @@ namespace App\Models;
 use App\Config\Database;
 use PDO;
 
-class CompetizioneAvanzamento
+class CompetizioneCollegamento
 {
     public function allByUniverso(int $idUniverso, array $filtri = []): array
     {
@@ -26,7 +26,7 @@ class CompetizioneAvanzamento
             cp.Tipo AS CompetizionePartenzaTipo,
             ca2.NomeCompetizione AS CompetizioneArrivoNome,
             ca2.Tipo AS CompetizioneArrivoTipo
-        FROM CompetizioneAvanzamento ca
+        FROM CompetizioneCollegamento ca
         INNER JOIN Competizioni cp ON cp.ID = ca.IDCompetizionePartenza
         INNER JOIN Competizioni ca2 ON ca2.ID = ca.IDCompetizioneArrivo
         WHERE cp.IDUniverso = :id_universo_partenza
@@ -83,7 +83,7 @@ class CompetizioneAvanzamento
             ca.Dettagli,
             ca.Creato,
             ca.Modificato
-        FROM CompetizioneAvanzamento ca
+        FROM CompetizioneCollegamento ca
         INNER JOIN Competizioni cp ON cp.ID = ca.IDCompetizionePartenza
         INNER JOIN Competizioni ca2 ON ca2.ID = ca.IDCompetizioneArrivo
         WHERE ca.ID = :id
@@ -108,7 +108,7 @@ class CompetizioneAvanzamento
         $pdo = Database::getConnessione();
 
         $statement = $pdo->prepare("
-            INSERT INTO CompetizioneAvanzamento (
+            INSERT INTO CompetizioneCollegamento (
                 IDCompetizionePartenza,
                 IDCompetizioneArrivo,
                 Ordine,
@@ -141,7 +141,7 @@ class CompetizioneAvanzamento
         $pdo = Database::getConnessione();
 
         $statement = $pdo->prepare("
-            UPDATE CompetizioneAvanzamento
+            UPDATE CompetizioneCollegamento
             SET
                 IDCompetizionePartenza = :id_competizione_partenza,
                 IDCompetizioneArrivo = :id_competizione_arrivo,
@@ -168,7 +168,7 @@ class CompetizioneAvanzamento
     {
         $pdo = Database::getConnessione();
 
-        $statement = $pdo->prepare("DELETE FROM CompetizioneAvanzamento WHERE ID = :id");
+        $statement = $pdo->prepare("DELETE FROM CompetizioneCollegamento WHERE ID = :id");
         $statement->execute(['id' => $id]);
     }
 }

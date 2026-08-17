@@ -2,7 +2,7 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use App\Controllers\CompetizioneAvanzamentoController;
+use App\Controllers\CompetizioneCollegamentoController;
 use App\Controllers\CompetizioneController;
 use App\Controllers\DevController;
 use App\Controllers\EdizioneController;
@@ -101,11 +101,11 @@ $router->post('/universi/{id}/competizioni', [CompetizioneController::class, 'st
 | COLLEGAMENTI COMPETIZIONI
 |--------------------------------------------------------------------------
 */
-$router->get('/universi/{id}/competizioni/collegamenti/create', [CompetizioneAvanzamentoController::class, 'createByUniverso']);
-$router->post('/universi/{id}/competizioni/collegamenti', [CompetizioneAvanzamentoController::class, 'storeByUniverso']);
-$router->get('/universi/{id}/competizioni/collegamenti/{idCollegamento}/edit', [CompetizioneAvanzamentoController::class, 'editByUniverso']);
-$router->post('/universi/{id}/competizioni/collegamenti/{idCollegamento}/update', [CompetizioneAvanzamentoController::class, 'updateByUniverso']);
-$router->post('/universi/{id}/competizioni/collegamenti/{idCollegamento}/delete', [CompetizioneAvanzamentoController::class, 'deleteByUniverso']);
+$router->get('/universi/{id}/competizioni/collegamenti/create', [CompetizioneCollegamentoController::class, 'createByUniverso']);
+$router->post('/universi/{id}/competizioni/collegamenti', [CompetizioneCollegamentoController::class, 'storeByUniverso']);
+$router->get('/universi/{id}/competizioni/collegamenti/{idCollegamento}/edit', [CompetizioneCollegamentoController::class, 'editByUniverso']);
+$router->post('/universi/{id}/competizioni/collegamenti/{idCollegamento}/update', [CompetizioneCollegamentoController::class, 'updateByUniverso']);
+$router->post('/universi/{id}/competizioni/collegamenti/{idCollegamento}/delete', [CompetizioneCollegamentoController::class, 'deleteByUniverso']);
 
 /*
 |--------------------------------------------------------------------------

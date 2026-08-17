@@ -6,7 +6,7 @@ namespace App\Controllers;
 
 use App\Http\Request;
 use App\Models\Competizione;
-use App\Models\CompetizioneAvanzamento;
+use App\Models\CompetizioneCollegamento;
 use App\Support\CompetitionTypes;
 
 class CompetizioneController
@@ -39,7 +39,7 @@ class CompetizioneController
 
         $competizioni = $this->competizioni->allByUniverso($idUniverso, $filtri);
 
-        $collegamentiModel = new CompetizioneAvanzamento();
+        $collegamentiModel = new CompetizioneCollegamento();
         $collegamenti = $collegamentiModel->allByUniverso($idUniverso);
 
         require __DIR__ . '/../Views/competizioni/index.php';

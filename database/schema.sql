@@ -149,7 +149,7 @@ CREATE TABLE Competizioni (
 ) ENGINE = InnoDB;
 
 -- Regole di passaggio tra competizioni (promozioni/retrocessioni/qualificazioni)
-CREATE TABLE CompetizioneAvanzamento (
+CREATE TABLE CompetizioneCollegamento (
     ID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     IDCompetizionePartenza INT UNSIGNED NOT NULL,
     IDCompetizioneArrivo INT UNSIGNED NOT NULL,
@@ -272,7 +272,7 @@ SET
 -- ============================================================
 -- 1) Crei l'Universo -> crei/associ Squadre e Giocatori (UniversoSquadre/UniversoGiocatori).
 -- 2) Crei le Competizioni dell'Universo (Serie A, Coppa Italia, Champions...) con
---    Struttura JSON (regole di formato) e le CompetizioneAvanzamento (regole di
+--    Struttura JSON (regole di formato) e le CompetizioneCollegamento (regole di
 --    passaggio tra competizioni, es. Serie A pos.1-3 -> Champions diretta,
 --    Serie A pos.4 -> Champions "candidata" per il confronto miglior-4°, gestito poi via PHP).
 -- 3) Crei l'Edizione 1 -> per ogni Competizione coinvolta crei una riga in
@@ -284,7 +284,7 @@ SET
 --    albo d'oro: tutte query di aggregazione su Partite/PartitaEventi/EdizioneCompetizioneSquadra,
 --    nessuna tabella aggiuntiva necessaria per ora.
 -- 6) A fine Edizione (Stato = 'conclusa'): calcoli il Podio su EdizioneCompetizione,
---    poi applichi le CompetizioneAvanzamento sulla classifica finale per popolare
+--    poi applichi le CompetizioneCollegamento sulla classifica finale per popolare
 --    automaticamente EdizioneCompetizioneSquadra della EdizioneCompetizione successiva
 --    (creando prima il "contenitore" edizione N+1). I casi tipo "miglior 4° tra piu'
 --    campionati" si gestiscono marcando tutti i candidati come Stato='candidata'

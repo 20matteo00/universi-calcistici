@@ -36,7 +36,7 @@ class DevController
                 'Partite',
                 'EdizioneCompetizioneSquadra',
                 'EdizioneCompetizione',
-                'CompetizioneAvanzamento',
+                'CompetizioneCollegamento',
                 'EdizioneSquadreGiocatori',
                 'EdizioneGiocatore',
                 'EdizioneSquadra',

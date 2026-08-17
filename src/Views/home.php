@@ -171,7 +171,7 @@
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body p-4">
                             <h2 class="h5 mb-2">Prossimi step</h2>
-                            <p class="text-muted mb-3">Edizioni, iscrizioni, match, classifiche e avanzamento stagionale.</p>
+                            <p class="text-muted mb-3">Edizioni, iscrizioni, match, classifiche e collegamenti stagionali.</p>
                             <button class="btn btn-outline-secondary" type="button" disabled>In arrivo</button>
                         </div>
                     </div>

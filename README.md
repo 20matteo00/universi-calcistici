@@ -1,6 +1,6 @@
 # Universi Calcistici
 
-Applicazione web in PHP per creare e simulare universi calcistici personalizzati, con squadre, giocatori, stagioni, competizioni e regole di avanzamento tra edizioni.
+Applicazione web in PHP per creare e simulare universi calcistici personalizzati, con squadre, giocatori, stagioni, competizioni e regole di collegamento tra competizioni.
 
 ## Indice
 
@@ -64,7 +64,7 @@ Attualmente risultano operativi nel flusso principale:
 - inizializzazione dati stagionali;
 - assegnazione giocatori alle squadre stagionali;
 - CRUD base delle competizioni;
-- CRUD base delle regole di avanzamento;
+- CRUD base delle regole di collegamento tra competizioni;
 - primo flusso di competizione stagionale con partite generate e gestione risultati;
 - supporto sia a competizioni di tipo **lega** sia a competizioni di tipo **eliminazione diretta**.
 
@@ -106,7 +106,7 @@ Negli ultimi aggiornamenti è stata migliorata in particolare la vista competizi
   - eliminazione diretta
 
 ### Avanzamenti
-- CRUD `CompetizioneAvanzamento`
+- CRUD `CompetizioneCollegamento`
 - regole di passaggio salvate in JSON (`Dettagli`)
 
 ### Competizioni stagionali
@@ -126,7 +126,7 @@ Negli ultimi aggiornamenti è stata migliorata in particolare la vista competizi
 - miglioramento UI e UX delle pagine competizione;
 - classifica completa e stabile per le leghe;
 - rifinitura della simulazione automatica;
-- avanzamento automatico tra stagioni;
+- collegamenti automatici tra stagioni;
 - generazione automatica partecipanti dalla seconda edizione in poi;
 - gestione completa di podio, qualificazioni, promozioni e retrocessioni;
 - uso futuro della tabella `users`.
@@ -147,85 +147,125 @@ La logica importante non viene “nascosta” nel database ma gestita nel codice
 ## Struttura cartelle
 
 ```text
-universi-calcistici/
-├── database/
-│   ├── seeds/
-│   ├── competitiontype.json
-│   └── schema.sql
-├── public/
-│   ├── assets/
-│   │   ├── css/
-│   │   │   └── style.css
-│   │   ├── img/
-│   │   └── js/
-│   │       └── app.js
-│   ├── index.php
-│   └── .htaccess
-├── src/
-│   ├── Config/
-│   │   └── Database.php
-│   ├── Controllers/
-│   │   ├── CompetizioneAvanzamentoController.php
-│   │   ├── CompetizioneController.php
-│   │   ├── DevController.php
-│   │   ├── GiocatoreController.php
-│   │   ├── PartitaController.php
-│   │   ├── SquadraController.php
-│   │   └── UniversoController.php
-│   ├── Http/
-│   │   ├── Request.php
-│   │   └── Router.php
-│   ├── Models/
-│   │   ├── Competizione.php
-│   │   ├── CompetizioneAvanzamento.php
-│   │   ├── Edizione.php
-│   │   ├── Giocatore.php
-│   │   ├── Partita.php
-│   │   ├── Squadra.php
-│   │   └── Universo.php
-│   ├── Services/
-│   │   ├── AvanzamentoService.php
-│   │   ├── CalendarioService.php
-│   │   ├── ClassificaService.php
-│   │   └── SimulazioneService.php
-│   ├── Support/
-│   │   ├── CompetitionTypes.php
-│   │   ├── Countries.php
-│   │   ├── Names.php
-│   │   └── Positions.php
-│   └── Views/
-│       ├── competizioni/
-│       │   ├── create.php
-│       │   ├── edit.php
-│       │   ├── index.php
-│       │   └── show.php
-│       ├── competizioni_avanzamento/
-│       │   ├── create.php
-│       │   └── edit.php
-│       ├── giocatori/
-│       │   ├── create.php
-│       │   ├── edit.php
-│       │   └── index.php
-│       ├── partials/
-│       │   ├── link.php
-│       │   └── script.php
-│       ├── squadre/
-│       │   ├── create.php
-│       │   ├── edit.php
-│       │   └── index.php
-│       ├── universi/
-│       │   ├── create.php
-│       │   ├── edit.php
-│       │   ├── giocatori.php
-│       │   ├── index.php
-│       │   ├── show.php
-│       │   └── squadre.php
-│       └── home.php
-├── vendor/
-├── composer.json
-├── composer.lock
-├── README.md
-└── .gitignore
+```
+universi-calcistici
+├──database
+│   ├──seeds
+│   ├──competitiontype.json
+│   └──schema.sql
+├──public
+│   ├──assets
+│   │   ├──css
+│   │   │   └──style.css
+│   │   ├──img
+│   │   └──js
+│   │   │   └──app.js
+│   ├──index.php
+│   └──.htaccess
+├──src
+│   ├──Config
+│   │   └──Database.php
+│   ├──Controllers
+│   │   ├──CompetizioneCollegamentoController.php
+│   │   ├──CompetizioneController.php
+│   │   ├──DevController.php
+│   │   ├──EdizioneController.php
+│   │   ├──GiocatoreController.php
+│   │   ├──PartitaController.php
+│   │   ├──SquadraController.php
+│   │   └──UniversoController.php
+│   ├──Http
+│   │   ├──Request.php
+│   │   └──Router.php
+│   ├──Models
+│   │   ├──Competizione.php
+│   │   ├──CompetizioneCollegamento.php
+│   │   ├──Edizione.php
+│   │   ├──EdizioneCompetizione.php
+│   │   ├──EdizioneGiocatore.php
+│   │   ├──EdizioneSquadra.php
+│   │   ├──Giocatore.php
+│   │   ├──Partita.php
+│   │   ├──PartitaEvento.php
+│   │   ├──PartitaQuery.php
+│   │   ├──Squadra.php
+│   │   └──Universo.php
+│   ├──Services
+│   │   ├──Competizioni
+│   │   │   ├──CompetizioneCalendarioService.php
+│   │   │   ├──CompetizioneClassificaCalculator.php
+│   │   │   ├──CompetizioneClassificaService.php
+│   │   │   ├──CompetizioneCollegamentoService.php
+│   │   │   ├──CompetizioneEliminazioneDirettaService.php
+│   │   │   └──CompetizioneShowService.php
+│   │   ├──Edizioni
+│   │   │   ├──CompetizioneIscrizioneService.php
+│   │   │   ├──CompetizioneUpdateService.php
+│   │   │   ├──EdizioneContextService.php
+│   │   │   ├──EdizioneCreateService.php
+│   │   │   ├──EdizioneFinalizeService.php
+│   │   │   ├──RosaAutoAssignService.php
+│   │   │   ├──RosaValidatorService.php
+│   │   │   └──RoseUpdateService.php
+│   │   └──Partite
+│   │   │   ├──PartitaContextService.php
+│   │   │   ├──PartitaEventGeneratorService.php
+│   │   │   ├──PartitaLockService.php
+│   │   │   ├──PartitaResetService.php
+│   │   │   ├──PartitaResultService.php
+│   │   │   └──PartitaSimulationService.php
+│   ├──Support
+│   │   ├──CompetitionTypes.php
+│   │   ├──Countries.php
+│   │   ├──Icons.php
+│   │   ├──Names.php
+│   │   └──Positions.php
+│   └──Views
+│   │   ├──competizioni
+│   │   │   ├──collegamenti
+│   │   │   │   ├──create.php
+│   │   │   │   └──edit.php
+│   │   │   ├──create.php
+│   │   │   ├──edit.php
+│   │   │   ├──index.php
+│   │   │   └──show.php
+│   │   ├──edizioni
+│   │   │   ├──competizioni
+│   │   │   │   ├──classifica.php
+│   │   │   │   ├──edit.php
+│   │   │   │   ├──index.php
+│   │   │   │   └──show.php
+│   │   │   ├──rose
+│   │   │   │   ├──edit.php
+│   │   │   │   ├──index.php
+│   │   │   │   └──show.php
+│   │   │   ├──create.php
+│   │   │   ├──index.php
+│   │   │   └──show.php
+│   │   ├──giocatori
+│   │   │   ├──create.php
+│   │   │   ├──edit.php
+│   │   │   └──index.php
+│   │   ├──partials
+│   │   │   ├──link.php
+│   │   │   └──script.php
+│   │   ├──squadre
+│   │   │   ├──create.php
+│   │   │   ├──edit.php
+│   │   │   └──index.php
+│   │   ├──universi
+│   │   │   ├──create.php
+│   │   │   ├──edit.php
+│   │   │   ├──giocatori.php
+│   │   │   ├──index.php
+│   │   │   ├──show.php
+│   │   │   └──squadre.php
+│   │   └──home.php
+├──composer.json
+├──composer.lock
+├──README.md
+└──.gitignore
+```
 ```
 
 ## Modello dati
@@ -244,7 +284,7 @@ universi-calcistici/
 
 ### Competizioni
 - `Competizioni`: entità astratte e stabili, come “Serie A” o “Coppa Italia”.
-- `CompetizioneAvanzamento`: regole di passaggio tra competizioni.
+- `CompetizioneCollegamento`: regole di passaggio tra competizioni.
 
 ### Competizioni stagionali
 - `EdizioneCompetizione`: concretizzazione stagionale di una competizione dentro un’edizione.
@@ -262,7 +302,7 @@ universi-calcistici/
 - Logica complessa nei `Services`.
 - JSON per strutture flessibili:
   - `Competizioni.Struttura`
-  - `CompetizioneAvanzamento.Dettagli`
+  - `CompetizioneCollegamento.Dettagli`
   - `Partite.Dettagli`
   - `PartitaEventi.Dettagli`
 - La prima stagione si prepara manualmente.
@@ -351,7 +391,7 @@ L’ordine corretto del progetto è questo:
 - podio e chiusura competizione.
 
 ### Blocco 5 - Continuità stagionale
-- avanzamento automatico;
+- collegamenti automatici;
 - qualificazioni;
 - promozioni e retrocessioni;
 - auto-generazione partecipanti per edizioni successive.
@@ -387,4 +427,4 @@ Questo blocco si considera chiuso quando:
 - posso generare le partite;
 - posso salvare e simulare risultati in modo coerente;
 - nel caso di coppa vedo correttamente `fase + giornata`;
-- la competizione è pronta per classifica o avanzamento successivo.
+- la competizione è pronta per classifica e collegamenti.
