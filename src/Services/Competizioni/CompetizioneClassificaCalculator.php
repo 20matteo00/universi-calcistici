@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\Competizioni;
 
-use App\Models\PartitaQuery;
 use App\Models\PartitaEvento;
+use App\Models\PartitaQuery;
 
-class ClassificaService
+final class CompetizioneClassificaCalculator
 {
     public function calcolaPerCompetizione(
         int $idEdizioneCompetizione,
@@ -115,6 +115,42 @@ class ClassificaService
         }
 
         return $tabella;
+    }
+
+    public function calcolaStatisticheGiocatori(
+        int $idEdizioneCompetizione,
+        int $giornataDa,
+        int $giornataA
+    ): array {
+        $model = new PartitaEvento();
+        $righe = $model->statisticheGiocatoriPerCompetizioneEIntervallo(
+            $idEdizioneCompetizione,
+            $giornataDa,
+            $giornataA
+        );
+
+        foreach ($righe as &$riga) {
+            $riga['Gol'] = (int) ($riga['Gol'] ?? 0);
+            $riga['GolRigore'] = (int) ($riga['GolRigore'] ?? 0);
+            $riga['Autogol'] = (int) ($riga['Autogol'] ?? 0);
+            $riga['Assist'] = (int) ($riga['Assist'] ?? 0);
+            $riga['Ammonizioni'] = (int) ($riga['Ammonizioni'] ?? 0);
+            $riga['Espulsioni'] = (int) ($riga['Espulsioni'] ?? 0);
+            $riga['RigoriSbagliati'] = (int) ($riga['RigoriSbagliati'] ?? 0);
+            $riga['EventiTotali'] = (int) ($riga['EventiTotali'] ?? 0);
+            $riga['NomeGiocatore'] = (string) ($riga['NomeGiocatore'] ?? '');
+            $riga['NomeSquadra'] = (string) ($riga['NomeSquadra'] ?? '');
+            $riga['Colori'] = $this->decodificaColori((string) ($riga['ColoriSquadra'] ?? '{}'));
+            $riga['PuntiDisciplina'] = ($riga['Ammonizioni'] * 1) + ($riga['Espulsioni'] * 3);
+        }
+        unset($riga);
+
+        return [
+            'marcatori' => $this->ordinaStatisticheGiocatori($righe, 'marcatori'),
+            'assist' => $this->ordinaStatisticheGiocatori($righe, 'assist'),
+            'disciplina' => $this->ordinaStatisticheGiocatori($righe, 'disciplina'),
+            'eventi' => $this->ordinaStatisticheGiocatori($righe, 'eventi'),
+        ];
     }
 
     private function creaMappaSquadre(array $partite): array
@@ -560,42 +596,6 @@ class ClassificaService
         }
 
         $stats['Punti'] += $puntiSconfitta;
-    }
-
-    public function calcolaStatisticheGiocatori(
-        int $idEdizioneCompetizione,
-        int $giornataDa,
-        int $giornataA
-    ): array {
-        $model = new PartitaEvento();
-        $righe = $model->statisticheGiocatoriPerCompetizioneEIntervallo(
-            $idEdizioneCompetizione,
-            $giornataDa,
-            $giornataA
-        );
-
-        foreach ($righe as &$riga) {
-            $riga['Gol'] = (int) ($riga['Gol'] ?? 0);
-            $riga['GolRigore'] = (int) ($riga['GolRigore'] ?? 0);
-            $riga['Autogol'] = (int) ($riga['Autogol'] ?? 0);
-            $riga['Assist'] = (int) ($riga['Assist'] ?? 0);
-            $riga['Ammonizioni'] = (int) ($riga['Ammonizioni'] ?? 0);
-            $riga['Espulsioni'] = (int) ($riga['Espulsioni'] ?? 0);
-            $riga['RigoriSbagliati'] = (int) ($riga['RigoriSbagliati'] ?? 0);
-            $riga['EventiTotali'] = (int) ($riga['EventiTotali'] ?? 0);
-            $riga['NomeGiocatore'] = (string) ($riga['NomeGiocatore'] ?? '');
-            $riga['NomeSquadra'] = (string) ($riga['NomeSquadra'] ?? '');
-            $riga['Colori'] = $this->decodificaColori((string) ($riga['ColoriSquadra'] ?? '{}'));
-            $riga['PuntiDisciplina'] = ($riga['Ammonizioni'] * 1) + ($riga['Espulsioni'] * 3);
-        }
-        unset($riga);
-
-        return [
-            'marcatori' => $this->ordinaStatisticheGiocatori($righe, 'marcatori'),
-            'assist' => $this->ordinaStatisticheGiocatori($righe, 'assist'),
-            'disciplina' => $this->ordinaStatisticheGiocatori($righe, 'disciplina'),
-            'eventi' => $this->ordinaStatisticheGiocatori($righe, 'eventi'),
-        ];
     }
 
     private function ordinaStatisticheGiocatori(array $righe, string $vista): array

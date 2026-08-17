@@ -8,7 +8,6 @@ use App\Models\Edizione;
 use App\Models\EdizioneCompetizione;
 use App\Models\PartitaQuery;
 use App\Models\Universo;
-use App\Services\ClassificaService;
 
 final class CompetizioneClassificaService
 {
@@ -16,7 +15,7 @@ final class CompetizioneClassificaService
     private Edizione $edizioni;
     private EdizioneCompetizione $edizioneCompetizioni;
     private PartitaQuery $partiteQuery;
-    private ClassificaService $classificaService;
+    private CompetizioneClassificaCalculator $classificaCalculator;
 
     public function __construct()
     {
@@ -24,7 +23,7 @@ final class CompetizioneClassificaService
         $this->edizioni = new Edizione();
         $this->edizioneCompetizioni = new EdizioneCompetizione();
         $this->partiteQuery = new PartitaQuery();
-        $this->classificaService = new ClassificaService();
+        $this->classificaCalculator = new CompetizioneClassificaCalculator();
     }
 
     public function build(
@@ -86,7 +85,7 @@ final class CompetizioneClassificaService
 
         $numeroGiri = max(1, (int) ($competizione['Giri'] ?? 1));
 
-        $visteClassifica = $this->classificaService->calcolaVisteCompetizione(
+        $visteClassifica = $this->classificaCalculator->calcolaVisteCompetizione(
             $idEdizioneCompetizione,
             $giornataDa,
             $giornataA,
@@ -119,7 +118,7 @@ final class CompetizioneClassificaService
 
         $righeSquadre = $visteClassifica[$tabAttiva] ?? [];
 
-        $statisticheGiocatori = $this->classificaService->calcolaStatisticheGiocatori(
+        $statisticheGiocatori = $this->classificaCalculator->calcolaStatisticheGiocatori(
             $idEdizioneCompetizione,
             $giornataDa,
             $giornataA
@@ -138,7 +137,7 @@ final class CompetizioneClassificaService
 
         $righeGiocatori = $statisticheGiocatori[$tabGiocatoriAttiva] ?? [];
 
-        $tabellaCapolista = $this->classificaService->calcolaTabellaCapolista(
+        $tabellaCapolista = $this->classificaCalculator->calcolaTabellaCapolista(
             $idEdizioneCompetizione,
             $struttura
         );
