@@ -11,6 +11,7 @@ use App\Models\Partita;
 use App\Models\Universo;
 use App\Services\EventGeneratorService;
 use App\Services\SimulazioneService;
+use App\Services\EliminazioneDirettaService;
 
 final class PartitaController
 {
@@ -19,6 +20,7 @@ final class PartitaController
     private Partita $partite;
     private SimulazioneService $simulazione;
     private EventGeneratorService $eventi;
+    private EliminazioneDirettaService $eliminazioneDiretta;
 
     public function __construct()
     {
@@ -29,6 +31,18 @@ final class PartitaController
         $this->partite = new Partita();
         $this->simulazione = new SimulazioneService();
         $this->eventi = new EventGeneratorService();
+        $this->eliminazioneDiretta = new EliminazioneDirettaService();
+    }
+
+    private function partiteFaseGiornata(
+        int $idEdizioneCompetizione,
+        string $fase,
+        int $giornata
+    ): array {
+        $gruppi = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
+        $chiave = mb_strtolower(trim($fase)) . '-' . $giornata;
+
+        return $gruppi[$chiave]['partite'] ?? [];
     }
 
     /*
@@ -70,6 +84,15 @@ final class PartitaController
         ) {
             http_response_code(404);
             echo 'Partita non trovata';
+            return;
+        }
+
+        if ($this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partita
+        )) {
             return;
         }
 
@@ -118,6 +141,15 @@ final class PartitaController
             return;
         }
 
+        if ($this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partita
+        )) {
+            return;
+        }
+
         /*
          * true = forza sempre la simulazione della singola partita.
          */
@@ -154,6 +186,15 @@ final class PartitaController
         ) {
             http_response_code(404);
             echo 'Partita non trovata';
+            return;
+        }
+
+        if ($this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partita
+        )) {
             return;
         }
 
@@ -345,6 +386,179 @@ final class PartitaController
         );
     }
 
+    public function salvaFaseGiornata(Request $request, array $params): void
+    {
+        $idUniverso = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+        $fase = trim((string) ($params['fase'] ?? ''));
+        $giornata = (int) ($params['giornata'] ?? 0);
+
+        if (!$this->validaContestoCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        )) {
+            return;
+        }
+
+        if ($fase === '' || $giornata <= 0) {
+            http_response_code(422);
+            echo 'Fase o giornata non valida';
+            return;
+        }
+
+        $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
+
+        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partite[0]
+        )) {
+            return;
+        }
+
+        $payloadPartite = $_POST['partite'] ?? [];
+
+        if (!is_array($payloadPartite)) {
+            $payloadPartite = [];
+        }
+
+        foreach ($partite as $partita) {
+            $idPartita = (int) ($partita['ID'] ?? 0);
+
+            if (
+                $idPartita <= 0 ||
+                !isset($payloadPartite[$idPartita]) ||
+                !is_array($payloadPartite[$idPartita])
+            ) {
+                continue;
+            }
+
+            $goalCasaRaw = $payloadPartite[$idPartita]['goal_casa'] ?? '';
+            $goalTrasfertaRaw = $payloadPartite[$idPartita]['goal_trasferta'] ?? '';
+
+            $this->salvaRisultatoPartitaById(
+                $idPartita,
+                $goalCasaRaw,
+                $goalTrasfertaRaw,
+                false
+            );
+        }
+
+        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+
+        $this->redirectCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $anchor
+        );
+    }
+
+    public function simulaFaseGiornata(Request $request, array $params): void
+    {
+        $idUniverso = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+        $fase = trim((string) ($params['fase'] ?? ''));
+        $giornata = (int) ($params['giornata'] ?? 0);
+
+        if (!$this->validaContestoCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        )) {
+            return;
+        }
+
+        if ($fase === '' || $giornata <= 0) {
+            http_response_code(422);
+            echo 'Fase o giornata non valida';
+            return;
+        }
+
+        $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
+        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partite[0]
+        )) {
+            return;
+        }
+
+        foreach ($partite as $partita) {
+            $idPartita = (int) ($partita['ID'] ?? 0);
+
+            if ($idPartita <= 0) {
+                continue;
+            }
+
+            $this->simulaPartitaById($idPartita, false);
+        }
+
+        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+
+        $this->redirectCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $anchor
+        );
+    }
+
+    public function resetFaseGiornata(Request $request, array $params): void
+    {
+        $idUniverso = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+        $fase = trim((string) ($params['fase'] ?? ''));
+        $giornata = (int) ($params['giornata'] ?? 0);
+
+        if (!$this->validaContestoCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        )) {
+            return;
+        }
+
+        if ($fase === '' || $giornata <= 0) {
+            http_response_code(422);
+            echo 'Fase o giornata non valida';
+            return;
+        }
+
+        $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
+        if ($partite !== [] && $this->bloccaSeTurnoEliminazioneCongelato(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $partite[0]
+        )) {
+            return;
+        }
+
+        foreach ($partite as $partita) {
+            $idPartita = (int) ($partita['ID'] ?? 0);
+
+            if ($idPartita > 0) {
+                $this->resetPartitaById($idPartita);
+            }
+        }
+
+        $anchor = 'fase-' . $this->slug($fase) . '-giornata-' . $giornata;
+
+        $this->redirectCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $anchor
+        );
+    }
+
     /*
      * =========================================================
      * TUTTE LE PARTITE
@@ -357,6 +571,15 @@ final class PartitaController
         $idUniverso = (int) ($params['id'] ?? 0);
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione
+            );
+            return;
+        }
 
         if (!$this->validaContestoCompetizione(
             $idUniverso,
@@ -415,6 +638,15 @@ final class PartitaController
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
 
+        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione
+            );
+            return;
+        }
+
         if (!$this->validaContestoCompetizione(
             $idUniverso,
             $idEdizione,
@@ -453,6 +685,15 @@ final class PartitaController
         $idUniverso = (int) ($params['id'] ?? 0);
         $idEdizione = (int) ($params['idEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        if ($this->competizioneEliminazioneDiretta($idEdizioneCompetizione)) {
+            $this->redirectCompetizione(
+                $idUniverso,
+                $idEdizione,
+                $idEdizioneCompetizione
+            );
+            return;
+        }
 
         if (!$this->validaContestoCompetizione(
             $idUniverso,
@@ -710,5 +951,45 @@ final class PartitaController
         $slug = preg_replace('/[^a-z0-9]+/u', '-', $slug) ?? '';
 
         return trim($slug, '-');
+    }
+
+    private function bloccaSeTurnoEliminazioneCongelato(
+        int $idUniverso,
+        int $idEdizione,
+        int $idEdizioneCompetizione,
+        array $partita
+    ): bool {
+        $fase = trim((string) ($partita['Fase'] ?? ''));
+        if ($fase === '') {
+            return false;
+        }
+
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
+
+        if ($tipoCompetizione !== 'eliminazione_diretta' && $tipoCompetizione !== 'eliminazione') {
+            return false;
+        }
+
+        if (!$this->eliminazioneDiretta->faseBloccata($idEdizioneCompetizione, $fase)) {
+            return false;
+        }
+
+        $this->redirectCompetizione(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $this->anchorDaPartita($partita)
+        );
+
+        return true;
+    }
+
+    private function competizioneEliminazioneDiretta(int $idEdizioneCompetizione): bool
+    {
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
+
+        return $tipoCompetizione === 'eliminazione_diretta' || $tipoCompetizione === 'eliminazione';
     }
 }

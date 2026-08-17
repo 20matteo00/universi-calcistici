@@ -338,4 +338,40 @@ class Partita
         $slug = preg_replace('/[^a-z0-9]+/u', '-', $slug) ?? '';
         return trim($slug, '-');
     }
+
+    public function findByEdizioneCompetizione(int $idEdizioneCompetizione): array
+    {
+        $pdo = \App\Config\Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        SELECT
+            p.*,
+            sc.Nome AS NomeSquadraCasa,
+            st.Nome AS NomeSquadraTrasferta
+        FROM Partite p
+        INNER JOIN Squadre sc ON sc.ID = p.IDSquadraCasa
+        INNER JOIN Squadre st ON st.ID = p.IDSquadraTrasferta
+        WHERE p.IDEdizioneCompetizione = :idEdizioneCompetizione
+        ORDER BY
+            CASE p.Fase
+                WHEN 'Sessantaquattresimo' THEN 1
+                WHEN 'Trentaduesimo' THEN 2
+                WHEN 'Sedicesimo' THEN 3
+                WHEN 'Ottavo' THEN 4
+                WHEN 'Quarto' THEN 5
+                WHEN 'Semifinale' THEN 6
+                WHEN 'Finale3Posto' THEN 7
+                WHEN 'Finale' THEN 8
+                ELSE 99
+            END ASC,
+            p.Giornata ASC,
+            p.ID ASC
+    ");
+
+        $statement->execute([
+            'idEdizioneCompetizione' => $idEdizioneCompetizione,
+        ]);
+
+        return $statement->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+    }
 }

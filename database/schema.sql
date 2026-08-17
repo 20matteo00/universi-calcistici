@@ -216,6 +216,7 @@ CREATE TABLE Partite (
         'Ottavo',
         'Quarto',
         'Semifinale',
+        'Finale3Posto',
         'Finale'
     ) NULL,
     Giornata SMALLINT NULL,

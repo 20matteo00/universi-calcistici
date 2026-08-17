@@ -14,6 +14,7 @@ use App\Services\CreazioneEdizioneService;
 use App\Services\CalendarioService;
 use App\Services\ClassificaService;
 use App\Services\SimulazioneService;
+use App\Services\EliminazioneDirettaService;
 
 class EdizioneController
 {
@@ -844,15 +845,29 @@ class EdizioneController
 
         $tipoCompetizione = mb_strtolower(trim((string) ($competizione['Tipo'] ?? '')));
         $simulazione = new SimulazioneService();
-        $partitaEventi = new \App\Models\PartitaEvento();
+        $partitaEventi = new PartitaEvento();
+
+        $fasiBloccate = [];
+        $statoEliminazione = [
+            'ok' => true,
+            'bloccanti' => [],
+            'vincitori' => [],
+            'perdenti' => [],
+            'turno' => null,
+            'turno_label' => null,
+            'finale_secca' => true,
+            'finale_terzo_posto' => false,
+        ];
 
         if ($tipoCompetizione === 'eliminazione_diretta') {
             $blocchiPartite = $this->partite->partiteRaggruppatePerFaseEGiornata($idEdizioneCompetizione);
+            $servizioEliminazione = new EliminazioneDirettaService();
+            $statoEliminazione = $servizioEliminazione->analizzaTurnoCorrente($idEdizioneCompetizione);
+            $fasiBloccate = $servizioEliminazione->mappaFasiBloccate($idEdizioneCompetizione);
 
             foreach ($blocchiPartite as $chiave => $blocco) {
                 foreach ($blocco['partite'] as $indice => $partita) {
                     $idPartita = (int) ($partita['ID'] ?? 0);
-
                     $blocchiPartite[$chiave]['partite'][$indice]['PreviewSimulazione'] = $simulazione->calcolaPreviewPartita($idPartita);
                     $blocchiPartite[$chiave]['partite'][$indice]['Eventi'] = $partitaEventi->findByPartita($idPartita);
                 }
@@ -1012,5 +1027,33 @@ class EdizioneController
         );
 
         require __DIR__ . '/../Views/edizioni/competizioni/classifica.php';
+    }
+
+    public function avanzaEliminazioneDiretta(Request $request, array $params): void
+    {
+        $idUniverso = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        $universo = $this->universi->find($idUniverso);
+        $edizione = $this->edizioni->find($idEdizione);
+        $competizione = $this->edizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if (!$universo || !$edizione || !$competizione) {
+            http_response_code(404);
+            echo 'Risorsa non trovata';
+            return;
+        }
+
+        $service = new EliminazioneDirettaService();
+        $risultato = $service->avanzaTurno($idEdizioneCompetizione);
+
+        if (!(bool) ($risultato['ok'] ?? false)) {
+            header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione . '#warning-eliminazione');
+            exit;
+        }
+
+        header('Location: /universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+        exit;
     }
 }

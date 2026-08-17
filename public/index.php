@@ -151,6 +151,7 @@ $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneComp
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/classifica', [EdizioneController::class, 'classificaCompetizione']);
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'showCompetizione']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'competizioniUpdate']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/eliminazione/avanza', [EdizioneController::class, 'avanzaEliminazioneDiretta']);
 
 /*
 |--------------------------------------------------------------------------
@@ -169,6 +170,9 @@ $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneComp
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/salva', [PartitaController::class, 'salvaGiornata']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/simula', [PartitaController::class, 'simulaGiornata']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/giornate/{giornata}/reset', [PartitaController::class, 'resetGiornata']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/fasi/{fase}/giornate/{giornata}/salva', [PartitaController::class, 'salvaFaseGiornata']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/fasi/{fase}/giornate/{giornata}/simula', [PartitaController::class, 'simulaFaseGiornata']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/fasi/{fase}/giornate/{giornata}/reset', [PartitaController::class, 'resetFaseGiornata']);
 
 /*
 |--------------------------------------------------------------------------
