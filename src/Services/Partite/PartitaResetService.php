@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Services\Partite;
 
 use App\Models\Partita;
-use App\Services\EventGeneratorService;
+use App\Services\Partite\PartitaEventGeneratorService;
 
 final class PartitaResetService
 {
     private Partita $partite;
-    private EventGeneratorService $eventi;
+    private PartitaEventGeneratorService $eventi;
 
     public function __construct()
     {
         $this->partite = new Partita();
-        $this->eventi = new EventGeneratorService();
+        $this->eventi = new PartitaEventGeneratorService();
     }
 
     public function resetta(int $idPartita): bool

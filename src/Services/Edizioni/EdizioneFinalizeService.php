@@ -8,7 +8,7 @@ use App\Config\Database;
 use App\Models\EdizioneCompetizione;
 use App\Models\EdizioneGiocatore;
 use App\Models\EdizioneSquadra;
-use App\Services\CalendarioService;
+use App\Services\Competizioni\CompetizioneCalendarioService;
 
 final class EdizioneFinalizeService
 {
@@ -17,7 +17,7 @@ final class EdizioneFinalizeService
         private readonly EdizioneCompetizione $edizioneCompetizioni = new EdizioneCompetizione(),
         private readonly EdizioneGiocatore $edizioneGiocatori = new EdizioneGiocatore(),
         private readonly RosaValidatorService $rosaValidatorService = new RosaValidatorService(),
-        private readonly CalendarioService $calendarioService = new CalendarioService(),
+        private readonly CompetizioneCalendarioService $calendarioService = new CompetizioneCalendarioService(),
     ) {
     }
 

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\Competizioni;
 
 use App\Models\EdizioneCompetizione;
 use App\Models\Partita;
 use App\Models\PartitaQuery;
 
-final class EliminazioneDirettaService
+final class CompetizioneEliminazioneDirettaService
 {
     private EdizioneCompetizione $edizioneCompetizioni;
     private Partita $partite;

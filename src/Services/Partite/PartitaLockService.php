@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Services\Partite;
 
 use App\Models\EdizioneCompetizione;
-use App\Services\EliminazioneDirettaService;
+use App\Services\Competizioni\CompetizioneEliminazioneDirettaService;
 
 final class PartitaLockService
 {
     private EdizioneCompetizione $edizioneCompetizioni;
-    private EliminazioneDirettaService $eliminazioneDiretta;
+    private CompetizioneEliminazioneDirettaService $eliminazioneDiretta;
 
     public function __construct()
     {
         $this->edizioneCompetizioni = new EdizioneCompetizione();
-        $this->eliminazioneDiretta = new EliminazioneDirettaService();
+        $this->eliminazioneDiretta = new CompetizioneEliminazioneDirettaService();
     }
 
     public function turnoEliminazioneBloccato(

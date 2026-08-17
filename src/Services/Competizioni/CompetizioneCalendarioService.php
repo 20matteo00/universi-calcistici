@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\Competizioni;
 
 use App\Models\EdizioneCompetizione;
 use App\Models\Partita;
 
-class CalendarioService
+final class CompetizioneCalendarioService
 {
     private EdizioneCompetizione $edizioneCompetizioni;
     private Partita $partite;

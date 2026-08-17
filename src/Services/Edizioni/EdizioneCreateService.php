@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\Edizioni;
 
 use App\Config\Database;
 use App\Models\Edizione;
 use Throwable;
 
-class CreazioneEdizioneService
+class EdizioneCreateService
 {
     public function creaPrimaEdizione(
         int $idUniverso,

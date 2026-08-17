@@ -12,14 +12,14 @@ use App\Models\EdizioneSquadra;
 use App\Models\Universo;
 use App\Services\Competizioni\CompetizioneClassificaService;
 use App\Services\Competizioni\CompetizioneShowService;
-use App\Services\CreazioneEdizioneService;
+use App\Services\Edizioni\EdizioneCreateService;
 use App\Services\Edizioni\CompetizioneUpdateService;
 use App\Services\Edizioni\EdizioneContextService;
 use App\Services\Edizioni\EdizioneFinalizeService;
 use App\Services\Edizioni\RosaAutoAssignService;
 use App\Services\Edizioni\RosaValidatorService;
 use App\Services\Edizioni\RoseUpdateService;
-use App\Services\EliminazioneDirettaService;
+use App\Services\Competizioni\CompetizioneEliminazioneDirettaService;
 
 class EdizioneController
 {
@@ -28,7 +28,7 @@ class EdizioneController
     private EdizioneSquadra $edizioneSquadre;
     private EdizioneGiocatore $edizioneGiocatori;
     private EdizioneCompetizione $edizioneCompetizioni;
-    private CreazioneEdizioneService $creazioneEdizioneService;
+    private EdizioneCreateService $creazioneEdizioneService;
     private RosaValidatorService $rosaValidatorService;
     private RosaAutoAssignService $rosaAutoAssignService;
     private RoseUpdateService $roseUpdateService;
@@ -44,7 +44,7 @@ class EdizioneController
         $this->edizioneGiocatori = new EdizioneGiocatore();
         $this->edizioneCompetizioni = new EdizioneCompetizione();
 
-        $this->creazioneEdizioneService = new CreazioneEdizioneService();
+        $this->creazioneEdizioneService = new EdizioneCreateService();
         $this->rosaValidatorService = new RosaValidatorService();
         $this->rosaAutoAssignService = new RosaAutoAssignService();
         $this->roseUpdateService = new RoseUpdateService();
@@ -605,7 +605,7 @@ class EdizioneController
             return;
         }
 
-        $service = new EliminazioneDirettaService();
+        $service = new CompetizioneEliminazioneDirettaService();
         $risultato = $service->avanzaTurno($idEdizioneCompetizione);
 
         if (!(bool) ($risultato['ok'] ?? false)) {

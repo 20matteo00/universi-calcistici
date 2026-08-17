@@ -9,8 +9,8 @@ use App\Models\EdizioneCompetizione;
 use App\Models\PartitaEvento;
 use App\Models\PartitaQuery;
 use App\Models\Universo;
-use App\Services\EliminazioneDirettaService;
-use App\Services\SimulazioneService;
+use App\Services\Competizioni\CompetizioneEliminazioneDirettaService;
+use App\Services\Partite\PartitaSimulationService;
 
 final class CompetizioneShowService
 {
@@ -19,8 +19,8 @@ final class CompetizioneShowService
     private EdizioneCompetizione $edizioneCompetizioni;
     private PartitaQuery $partiteQuery;
     private PartitaEvento $partitaEventi;
-    private SimulazioneService $simulazione;
-    private EliminazioneDirettaService $eliminazioneDiretta;
+    private PartitaSimulationService $simulazione;
+    private CompetizioneEliminazioneDirettaService $eliminazioneDiretta;
 
     public function __construct()
     {
@@ -29,8 +29,8 @@ final class CompetizioneShowService
         $this->edizioneCompetizioni = new EdizioneCompetizione();
         $this->partiteQuery = new PartitaQuery();
         $this->partitaEventi = new PartitaEvento();
-        $this->simulazione = new SimulazioneService();
-        $this->eliminazioneDiretta = new EliminazioneDirettaService();
+        $this->simulazione = new PartitaSimulationService();
+        $this->eliminazioneDiretta = new CompetizioneEliminazioneDirettaService();
     }
 
     public function build(

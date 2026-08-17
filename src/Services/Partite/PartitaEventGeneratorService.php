@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\Partite;
 
 use App\Config\Database;
 use App\Models\Partita;
@@ -10,7 +10,7 @@ use App\Models\PartitaEvento;
 use JsonException;
 use PDO;
 
-final class EventGeneratorService
+final class PartitaEventGeneratorService
 {
     private PDO $pdo;
     private Partita $partite;
