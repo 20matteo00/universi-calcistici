@@ -15,7 +15,6 @@ final class EventGeneratorService
     private PDO $pdo;
     private Partita $partite;
     private PartitaEvento $partitaEventi;
-    private array $minutiUsati = [];
 
     public function __construct()
     {
@@ -27,7 +26,6 @@ final class EventGeneratorService
     public function rigeneraPerPartita(int $idPartita): void
     {
         $partita = $this->caricaPartita($idPartita);
-        $this->minutiUsati = [];
 
         if (!$partita) {
             return;
@@ -47,62 +45,27 @@ final class EventGeneratorService
         $rosaCasa = $this->caricaGiocatoriSquadraEdizione($idEdizione, $idSquadraCasa);
         $rosaTrasferta = $this->caricaGiocatoriSquadraEdizione($idEdizione, $idSquadraTrasferta);
 
-        $this->partitaEventi->deleteByPartita($idPartita);
-
-        $eventi = [];
-
-        $eventi = array_merge(
-            $eventi,
-            $this->generaGolSquadra(
-                $idPartita,
-                $idSquadraCasa,
-                $idSquadraTrasferta,
-                (int) $goalCasa,
-                $rosaCasa,
-                $rosaTrasferta
-            )
-        );
-
-        $eventi = array_merge(
-            $eventi,
-            $this->generaGolSquadra(
-                $idPartita,
-                $idSquadraTrasferta,
-                $idSquadraCasa,
-                (int) $goalTrasferta,
-                $rosaTrasferta,
-                $rosaCasa
-            )
-        );
-
-        $eventi = array_merge(
-            $eventi,
-            $this->generaCartelliniSquadra($idPartita, $idSquadraCasa, $rosaCasa),
-            $this->generaCartelliniSquadra($idPartita, $idSquadraTrasferta, $rosaTrasferta)
-        );
-
-        if ($this->chance(8)) {
-            $squadraRigore = $this->chance(50) ? $idSquadraCasa : $idSquadraTrasferta;
-            $rosaRigore = $squadraRigore === $idSquadraCasa ? $rosaCasa : $rosaTrasferta;
-
-            $rigorista = $this->pickWeightedPlayerId(
-                $rosaRigore,
-                fn(array $g): float => $this->pesoRigore($g)
-            );
-
-            $eventi[] = [
-                'IDPartita' => $idPartita,
-                'IDGiocatore' => $rigorista,
-                'IDSquadra' => $squadraRigore,
-                'Tipo' => 'rigore_sbagliato',
-                'Minuto' => $this->randomMinuto(),
-                'Dettagli' => null,
-            ];
+        if ($rosaCasa === [] || $rosaTrasferta === []) {
+            return;
         }
 
-        usort($eventi, static function (array $a, array $b): int {
-            return ($a['Minuto'] ?? 0) <=> ($b['Minuto'] ?? 0);
-        });
+        $this->partitaEventi->deleteByPartita($idPartita);
+
+        $skeleton = $this->generaScheletroEventi(
+            $idPartita,
+            $idSquadraCasa,
+            $idSquadraTrasferta,
+            (int) $goalCasa,
+            (int) $goalTrasferta
+        );
+
+        $eventi = $this->assegnaGiocatoriEventi(
+            $skeleton,
+            $idSquadraCasa,
+            $idSquadraTrasferta,
+            $rosaCasa,
+            $rosaTrasferta
+        );
 
         foreach ($eventi as $evento) {
             $this->partitaEventi->create($evento);
@@ -151,6 +114,7 @@ final class EventGeneratorService
                AND eg.IDGiocatore = esg.IDGiocatore
             WHERE esg.IDEdizione = :id_edizione
               AND esg.IDSquadra = :id_squadra
+            ORDER BY g.Nome ASC
         ";
 
         $stmt = $this->pdo->prepare($sql);
@@ -162,173 +126,295 @@ final class EventGeneratorService
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    private function generaGolSquadra(
+    private function generaScheletroEventi(
         int $idPartita,
-        int $idSquadraBeneficio,
-        int $idSquadraAvversaria,
-        int $numeroGol,
-        array $rosaBeneficio,
-        array $rosaAvversaria
+        int $idSquadraCasa,
+        int $idSquadraTrasferta,
+        int $goalCasa,
+        int $goalTrasferta
     ): array {
         $eventi = [];
 
-        for ($i = 0; $i < $numeroGol; $i++) {
-            $roll = random_int(1, 100);
-            $minuto = $this->randomMinuto();
-
-            if ($roll <= 1) {
-                $autoreAutogol = $this->pickWeightedPlayerId(
-                    $rosaAvversaria,
-                    fn(array $g): float => $this->pesoAutogol($g)
-                );
-
-                $eventi[] = [
-                    'IDPartita' => $idPartita,
-                    'IDGiocatore' => $autoreAutogol,
-                    'IDSquadra' => $idSquadraBeneficio,
-                    'Tipo' => 'gol',
-                    'Minuto' => $minuto,
-                    'Dettagli' => $this->json(['autogol' => true]),
-                ];
-                continue;
-            }
-
-            if ($roll <= 6) {
-                $rigorista = $this->pickWeightedPlayerId(
-                    $rosaBeneficio,
-                    fn(array $g): float => $this->pesoRigore($g)
-                );
-
-                $eventi[] = [
-                    'IDPartita' => $idPartita,
-                    'IDGiocatore' => $rigorista,
-                    'IDSquadra' => $idSquadraBeneficio,
-                    'Tipo' => 'gol',
-                    'Minuto' => $minuto,
-                    'Dettagli' => $this->json(['rigore' => true]),
-                ];
-                continue;
-            }
-
-            $marcatore = $this->pickWeightedPlayerId(
-                $rosaBeneficio,
-                fn(array $g): float => $this->pesoGol($g)
-            );
-
-            if ($marcatore === null) {
-                $marcatore = $this->pickRandomPlayerId($rosaBeneficio);
-            }
-
-            if ($marcatore === null) {
-                continue;
-            }
-
-            if ($roll <= 26) {
-                $eventi[] = [
-                    'IDPartita' => $idPartita,
-                    'IDGiocatore' => $marcatore,
-                    'IDSquadra' => $idSquadraBeneficio,
-                    'Tipo' => 'gol',
-                    'Minuto' => $minuto,
-                    'Dettagli' => null,
-                ];
-                continue;
-            }
-
-            $giocatoriAssist = array_values(array_filter(
-                $rosaBeneficio,
-                static fn(array $g): bool => (int) ($g['ID'] ?? 0) !== $marcatore
-            ));
-
-            $assist = $this->pickWeightedPlayerId(
-                $giocatoriAssist,
-                fn(array $g): float => $this->pesoAssist($g)
-            );
-
+        for ($i = 0; $i < $goalCasa; $i++) {
             $eventi[] = [
                 'IDPartita' => $idPartita,
-                'IDGiocatore' => $marcatore,
-                'IDSquadra' => $idSquadraBeneficio,
-                'Tipo' => 'gol',
-                'Minuto' => $minuto,
-                'Dettagli' => $assist !== null
-                    ? $this->json(['assist_id' => $assist])
-                    : null,
+                'IDSquadra' => $idSquadraCasa,
+                'TipoSkeleton' => 'gol',
+                'Minuto' => $this->randomMinuto(),
             ];
         }
 
-        return $eventi;
-    }
-
-    private function generaCartelliniSquadra(int $idPartita, int $idSquadra, array $rosa): array
-    {
-        $eventi = [];
-        $giaAmmoniti = [];
-
-        $numeroGialli = random_int(0, 3);
-
-        for ($i = 0; $i < $numeroGialli; $i++) {
-            $candidati = array_values(array_filter(
-                $rosa,
-                static fn(array $g): bool => !in_array((int) ($g['ID'] ?? 0), $giaAmmoniti, true)
-            ));
-
-            $giocatoreId = $this->pickWeightedPlayerId(
-                $candidati,
-                fn(array $g): float => $this->pesoCartellino($g)
-            );
-
-            if ($giocatoreId === null) {
-                break;
-            }
-
-            $giaAmmoniti[] = $giocatoreId;
-
+        for ($i = 0; $i < $goalTrasferta; $i++) {
             $eventi[] = [
                 'IDPartita' => $idPartita,
-                'IDGiocatore' => $giocatoreId,
-                'IDSquadra' => $idSquadra,
-                'Tipo' => 'ammonizione',
+                'IDSquadra' => $idSquadraTrasferta,
+                'TipoSkeleton' => 'gol',
                 'Minuto' => $this->randomMinuto(),
-                'Dettagli' => null,
+            ];
+        }
+
+        $numeroGialliCasa = random_int(0, 3);
+        $numeroGialliTrasferta = random_int(0, 3);
+
+        for ($i = 0; $i < $numeroGialliCasa; $i++) {
+            $eventi[] = [
+                'IDPartita' => $idPartita,
+                'IDSquadra' => $idSquadraCasa,
+                'TipoSkeleton' => 'ammonizione',
+                'Minuto' => $this->randomMinuto(),
+            ];
+        }
+
+        for ($i = 0; $i < $numeroGialliTrasferta; $i++) {
+            $eventi[] = [
+                'IDPartita' => $idPartita,
+                'IDSquadra' => $idSquadraTrasferta,
+                'TipoSkeleton' => 'ammonizione',
+                'Minuto' => $this->randomMinuto(),
             ];
         }
 
         if ($this->chance(7)) {
-            $candidatiEspulsione = array_values(array_filter(
-                $rosa,
-                static fn(array $g): bool => !in_array((int) ($g['ID'] ?? 0), $giaAmmoniti, true)
-            ));
-
-            $espulso = $this->pickWeightedPlayerId(
-                $candidatiEspulsione,
-                fn(array $g): float => $this->pesoCartellino($g)
-            );
-
-            if ($espulso !== null) {
-                $eventi[] = [
-                    'IDPartita' => $idPartita,
-                    'IDGiocatore' => $espulso,
-                    'IDSquadra' => $idSquadra,
-                    'Tipo' => 'espulsione',
-                    'Minuto' => $this->randomMinuto(),
-                    'Dettagli' => null,
-                ];
-            }
+            $eventi[] = [
+                'IDPartita' => $idPartita,
+                'IDSquadra' => $idSquadraCasa,
+                'TipoSkeleton' => 'espulsione',
+                'Minuto' => $this->randomMinuto(),
+            ];
         }
+
+        if ($this->chance(7)) {
+            $eventi[] = [
+                'IDPartita' => $idPartita,
+                'IDSquadra' => $idSquadraTrasferta,
+                'TipoSkeleton' => 'espulsione',
+                'Minuto' => $this->randomMinuto(),
+            ];
+        }
+
+        if ($this->chance(8)) {
+            $eventi[] = [
+                'IDPartita' => $idPartita,
+                'IDSquadra' => $this->chance(50) ? $idSquadraCasa : $idSquadraTrasferta,
+                'TipoSkeleton' => 'rigore_sbagliato',
+                'Minuto' => $this->randomMinuto(),
+            ];
+        }
+
+        usort($eventi, static function (array $a, array $b): int {
+            $cmp = ((int) ($a['Minuto'] ?? 0)) <=> ((int) ($b['Minuto'] ?? 0));
+
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            $ordine = [
+                'espulsione' => 1,
+                'ammonizione' => 2,
+                'rigore_sbagliato' => 3,
+                'gol' => 4,
+            ];
+
+            return ($ordine[$a['TipoSkeleton']] ?? 99) <=> ($ordine[$b['TipoSkeleton']] ?? 99);
+        });
 
         return $eventi;
     }
 
-    private function pickRandomPlayerId(array $giocatori): ?int
-    {
-        if ($giocatori === []) {
-            return null;
+    private function assegnaGiocatoriEventi(
+        array $skeleton,
+        int $idSquadraCasa,
+        int $idSquadraTrasferta,
+        array $rosaCasa,
+        array $rosaTrasferta
+    ): array {
+        $eventiFinali = [];
+        $espulsiDalMinuto = [];
+        $ammoniti = [];
+
+        foreach ($skeleton as $evento) {
+            $idSquadra = (int) ($evento['IDSquadra'] ?? 0);
+            $minuto = (int) ($evento['Minuto'] ?? 0);
+            $tipoSkeleton = (string) ($evento['TipoSkeleton'] ?? '');
+
+            $rosaSquadra = $idSquadra === $idSquadraCasa ? $rosaCasa : $rosaTrasferta;
+            $rosaAvversaria = $idSquadra === $idSquadraCasa ? $rosaTrasferta : $rosaCasa;
+
+            $disponibiliSquadra = $this->filtraGiocatoriDisponibili($rosaSquadra, $espulsiDalMinuto, $minuto);
+            $disponibiliAvversari = $this->filtraGiocatoriDisponibili($rosaAvversaria, $espulsiDalMinuto, $minuto);
+
+            if ($tipoSkeleton === 'ammonizione') {
+                $candidati = array_values(array_filter(
+                    $disponibiliSquadra,
+                    fn(array $g): bool => !isset($ammoniti[(int) ($g['ID'] ?? 0)])
+                ));
+
+                $giocatoreId = $this->pickWeightedPlayerId(
+                    $candidati,
+                    fn(array $g): float => $this->pesoCartellino($g)
+                );
+
+                if ($giocatoreId === null) {
+                    continue;
+                }
+
+                $ammoniti[$giocatoreId] = true;
+
+                $eventiFinali[] = [
+                    'IDPartita' => (int) $evento['IDPartita'],
+                    'IDGiocatore' => $giocatoreId,
+                    'IDSquadra' => $idSquadra,
+                    'Tipo' => 'ammonizione',
+                    'Minuto' => $minuto,
+                    'Dettagli' => null,
+                ];
+
+                continue;
+            }
+
+            if ($tipoSkeleton === 'espulsione') {
+                $giocatoreId = $this->pickWeightedPlayerId(
+                    $disponibiliSquadra,
+                    fn(array $g): float => $this->pesoCartellino($g)
+                );
+
+                if ($giocatoreId === null) {
+                    continue;
+                }
+
+                $espulsiDalMinuto[$giocatoreId] = $minuto;
+
+                $eventiFinali[] = [
+                    'IDPartita' => (int) $evento['IDPartita'],
+                    'IDGiocatore' => $giocatoreId,
+                    'IDSquadra' => $idSquadra,
+                    'Tipo' => 'espulsione',
+                    'Minuto' => $minuto,
+                    'Dettagli' => null,
+                ];
+
+                continue;
+            }
+
+            if ($tipoSkeleton === 'rigore_sbagliato') {
+                $giocatoreId = $this->pickWeightedPlayerId(
+                    $disponibiliSquadra,
+                    fn(array $g): float => $this->pesoRigore($g)
+                );
+
+                if ($giocatoreId === null) {
+                    continue;
+                }
+
+                $eventiFinali[] = [
+                    'IDPartita' => (int) $evento['IDPartita'],
+                    'IDGiocatore' => $giocatoreId,
+                    'IDSquadra' => $idSquadra,
+                    'Tipo' => 'rigore_sbagliato',
+                    'Minuto' => $minuto,
+                    'Dettagli' => null,
+                ];
+
+                continue;
+            }
+
+            if ($tipoSkeleton === 'gol') {
+                $roll = random_int(1, 100);
+                $dettagli = [];
+                $idGiocatore = null;
+
+                if ($roll <= 2) {
+                    $idGiocatore = $this->pickWeightedPlayerId(
+                        $disponibiliAvversari,
+                        fn(array $g): float => $this->pesoAutogol($g)
+                    );
+
+                    if ($idGiocatore === null) {
+                        $idGiocatore = $this->pickWeightedPlayerId(
+                            $disponibiliSquadra,
+                            fn(array $g): float => $this->pesoGol($g)
+                        );
+                    } else {
+                        $dettagli['autogol'] = true;
+                    }
+                } elseif ($roll <= 10) {
+                    $idGiocatore = $this->pickWeightedPlayerId(
+                        $disponibiliSquadra,
+                        fn(array $g): float => $this->pesoRigore($g)
+                    );
+
+                    if ($idGiocatore !== null) {
+                        $dettagli['rigore'] = true;
+                    }
+                } else {
+                    $idGiocatore = $this->pickWeightedPlayerId(
+                        $disponibiliSquadra,
+                        fn(array $g): float => $this->pesoGol($g)
+                    );
+                }
+
+                if ($idGiocatore === null) {
+                    continue;
+                }
+
+                if (!isset($dettagli['autogol']) && random_int(1, 100) <= 55) {
+                    $candidatiAssist = array_values(array_filter(
+                        $disponibiliSquadra,
+                        static fn(array $g): bool => (int) ($g['ID'] ?? 0) !== $idGiocatore
+                    ));
+
+                    $assistId = $this->pickWeightedPlayerId(
+                        $candidatiAssist,
+                        fn(array $g): float => $this->pesoAssist($g)
+                    );
+
+                    if ($assistId !== null) {
+                        $dettagli['assist_id'] = $assistId;
+                    }
+                }
+
+                $eventiFinali[] = [
+                    'IDPartita' => (int) $evento['IDPartita'],
+                    'IDGiocatore' => $idGiocatore,
+                    'IDSquadra' => $idSquadra,
+                    'Tipo' => 'gol',
+                    'Minuto' => $minuto,
+                    'Dettagli' => $dettagli === [] ? null : $this->json($dettagli),
+                ];
+            }
         }
 
-        $index = array_rand($giocatori);
+        usort($eventiFinali, static function (array $a, array $b): int {
+            $cmp = ((int) ($a['Minuto'] ?? 0)) <=> ((int) ($b['Minuto'] ?? 0));
 
-        return isset($giocatori[$index]['ID']) ? (int) $giocatori[$index]['ID'] : null;
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            return strcmp((string) ($a['Tipo'] ?? ''), (string) ($b['Tipo'] ?? ''));
+        });
+
+        return $eventiFinali;
+    }
+
+    private function filtraGiocatoriDisponibili(array $rosa, array $espulsiDalMinuto, int $minuto): array
+    {
+        return array_values(array_filter(
+            $rosa,
+            static function (array $g) use ($espulsiDalMinuto, $minuto): bool {
+                $id = (int) ($g['ID'] ?? 0);
+
+                if ($id <= 0) {
+                    return false;
+                }
+
+                if (!isset($espulsiDalMinuto[$id])) {
+                    return true;
+                }
+
+                return $minuto <= (int) $espulsiDalMinuto[$id];
+            }
+        ));
     }
 
     private function pickWeightedPlayerId(array $giocatori, callable $weightResolver): ?int
@@ -379,6 +465,17 @@ final class EventGeneratorService
         return (int) end($weighted)['ID'];
     }
 
+    private function pickRandomPlayerId(array $giocatori): ?int
+    {
+        if ($giocatori === []) {
+            return null;
+        }
+
+        $index = array_rand($giocatori);
+
+        return isset($giocatori[$index]['ID']) ? (int) $giocatori[$index]['ID'] : null;
+    }
+
     private function pesoGol(array $giocatore): float
     {
         $attacco = (float) ($giocatore['Attacco'] ?? 0);
@@ -386,19 +483,19 @@ final class EventGeneratorService
         $posizione = (string) ($giocatore['Posizione'] ?? '');
 
         $bonusRuolo = match ($posizione) {
-            'ATT' => 2.2,
-            'AS', 'AD' => 1.8,
-            'TRQ' => 1.7,
+            'ATT' => 2.4,
+            'AS', 'AD' => 2.0,
+            'TRQ' => 1.8,
             'CL', 'CR' => 1.35,
-            'CC' => 1.15,
-            'MED' => 0.9,
-            'TD', 'TS' => 0.75,
+            'CC' => 1.1,
+            'MED' => 0.85,
+            'TD', 'TS' => 0.7,
             'DC' => 0.55,
             'POR' => 0.1,
             default => 1.0,
         };
 
-        return max(0.1, ($attacco * 1.8 + $difesa * 0.2) * $bonusRuolo);
+        return max(0.1, (($attacco * 2.2) + ($difesa * 0.1)) * $bonusRuolo);
     }
 
     private function pesoAssist(array $giocatore): float
@@ -407,20 +504,22 @@ final class EventGeneratorService
         $difesa = (float) ($giocatore['Difesa'] ?? 0);
         $posizione = (string) ($giocatore['Posizione'] ?? '');
 
+        $qualita = ($attacco + $difesa) / 2;
+
         $bonusRuolo = match ($posizione) {
-            'TRQ' => 2.0,
+            'TRQ' => 2.1,
             'AS', 'AD' => 1.9,
             'CL', 'CR' => 1.7,
             'CC' => 1.5,
-            'ATT' => 1.3,
+            'ATT' => 1.15,
             'MED' => 1.1,
-            'TD', 'TS' => 1.15,
+            'TD', 'TS' => 1.0,
             'DC' => 0.45,
             'POR' => 0.05,
             default => 1.0,
         };
 
-        return max(0.1, (($attacco * 1.2) + ($difesa * 0.45)) * $bonusRuolo);
+        return max(0.1, $qualita * $bonusRuolo);
     }
 
     private function pesoRigore(array $giocatore): float
@@ -429,12 +528,13 @@ final class EventGeneratorService
         $posizione = (string) ($giocatore['Posizione'] ?? '');
 
         $bonusRuolo = match ($posizione) {
-            'ATT' => 2.0,
-            'TRQ' => 1.8,
+            'ATT' => 2.3,
+            'TRQ' => 1.9,
             'AS', 'AD' => 1.6,
-            'CL', 'CR' => 1.25,
+            'CL', 'CR' => 1.3,
             'CC' => 1.0,
-            default => 0.6,
+            'MED' => 0.75,
+            default => 0.5,
         };
 
         return max(0.1, $attacco * $bonusRuolo);
@@ -447,7 +547,7 @@ final class EventGeneratorService
         $posizione = (string) ($giocatore['Posizione'] ?? '');
 
         $bonusRuolo = match ($posizione) {
-            'DC' => 2.0,
+            'DC' => 2.1,
             'TD', 'TS' => 1.8,
             'MED' => 1.7,
             'CC' => 1.35,
@@ -457,7 +557,7 @@ final class EventGeneratorService
             default => 1.0,
         };
 
-        return max(0.1, (($difesa * 1.4) + ($attacco * 0.2)) * $bonusRuolo);
+        return max(0.1, (($difesa * 1.5) + ($attacco * 0.15)) * $bonusRuolo);
     }
 
     private function pesoAutogol(array $giocatore): float
@@ -466,29 +566,19 @@ final class EventGeneratorService
         $posizione = (string) ($giocatore['Posizione'] ?? '');
 
         $bonusRuolo = match ($posizione) {
-            'POR' => 1.8,
-            'DC' => 2.2,
-            'TD', 'TS' => 1.7,
-            'MED' => 1.2,
+            'POR' => 1.9,
+            'DC' => 2.4,
+            'TD', 'TS' => 1.8,
+            'MED' => 1.15,
             default => 0.35,
         };
 
-        return max(0.1, ($difesa + 1) * $bonusRuolo);
+        return max(0.1, (($difesa * 1.3) + 1) * $bonusRuolo);
     }
 
     private function randomMinuto(): int
     {
-        if (count($this->minutiUsati) >= 90) {
-            return 90;
-        }
-
-        do {
-            $minuto = random_int(1, 90);
-        } while (in_array($minuto, $this->minutiUsati, true));
-
-        $this->minutiUsati[] = $minuto;
-
-        return $minuto;
+        return random_int(1, 90);
     }
 
     private function chance(int $percent): bool
