@@ -106,9 +106,6 @@ final class EdizioneAdvanceService
             $numeroNuovaEdizione = ((int) ($edizioneCorrente['Numero'] ?? 1)) + 1;
             $nomeNuovaEdizione = 'Stagione ' . $numeroNuovaEdizione;
 
-            $verificaRose = $this->universi->verificaRoseMinime($idUniverso);
-            $roseMinimeOk = (bool) ($verificaRose['ok'] ?? false);
-
             $idNuovaEdizione = $this->edizioneCreateService->creaPrimaEdizione(
                 $idUniverso,
                 $numeroNuovaEdizione,
@@ -127,7 +124,13 @@ final class EdizioneAdvanceService
                 $collegamenti
             );
 
-            $this->applicaMovimenti($idNuovaEdizione, $movimenti);
+            $this->iscriviSquadreAlleCompetizioniBase(
+                $competizioniCorrenti,
+                $competizioniNuove,
+                $movimenti
+            );
+
+            $this->applicaMovimentiExtra($movimenti);
             $this->edizioni->aggiornaStato($idEdizione, 'conclusa');
 
             $pdo->commit();
@@ -149,9 +152,51 @@ final class EdizioneAdvanceService
         }
     }
 
-    private function applicaMovimenti(int $idNuovaEdizione, array $movimenti): void
+    private function iscriviSquadreAlleCompetizioniBase(
+        array $competizioniCorrenti,
+        array $competizioniNuove,
+        array $movimenti
+    ): void {
+        
+        $mappaNuovePerCompetizioneBase = $this->mappaCompetizioniPerCompetizioneBase($competizioniNuove);
+        $spostamentiPerSquadra = $this->mappaSpostamentiPerSquadra($movimenti);
+
+        foreach ($competizioniCorrenti as $competizioneCorrente) {
+            if (empty($competizioneCorrente['EreditaPartecipanti'])) {
+                continue;
+            }
+
+            $idCompetizioneBaseCorrente = (int) ($competizioneCorrente['IDCompetizione'] ?? 0);
+            $idEdizioneCompetizioneCorrente = (int) ($competizioneCorrente['ID'] ?? 0);
+
+            if ($idCompetizioneBaseCorrente <= 0 || $idEdizioneCompetizioneCorrente <= 0) {
+                continue;
+            }
+
+            $iscritte = $this->edizioneCompetizioni->squadreIscritteACompetizione($idEdizioneCompetizioneCorrente);
+
+            foreach ($iscritte as $squadra) {
+                $idSquadra = (int) ($squadra['IDSquadra'] ?? 0);
+                if ($idSquadra <= 0) {
+                    continue;
+                }
+
+                $idDestinazione = $spostamentiPerSquadra[$idSquadra]
+                    ?? (int) ($mappaNuovePerCompetizioneBase[$idCompetizioneBaseCorrente]['ID'] ?? 0);
+
+                if ($idDestinazione <= 0) {
+                    continue;
+                }
+
+                $this->iscriviSquadraSeManca($idDestinazione, $idSquadra, 'Assegnazione base nuova stagione');
+            }
+        }
+    }
+
+    private function applicaMovimentiExtra(array $movimenti): void
     {
         foreach ($movimenti as $movimento) {
+            $azione = (string) ($movimento['azione'] ?? '');
             $idEdizioneCompetizioneDestinazione = (int) ($movimento['id_edizione_competizione_destinazione'] ?? 0);
             $idSquadra = (int) ($movimento['id_squadra'] ?? 0);
 
@@ -159,26 +204,68 @@ final class EdizioneAdvanceService
                 continue;
             }
 
-            $giaIscritta = false;
-            $iscritte = $this->edizioneCompetizioni->squadreIscritteACompetizione($idEdizioneCompetizioneDestinazione);
-
-            foreach ($iscritte as $squadra) {
-                if ((int) ($squadra['IDSquadra'] ?? 0) === $idSquadra) {
-                    $giaIscritta = true;
-                    break;
-                }
-            }
-
-            if ($giaIscritta) {
+            if ($azione === 'spostamento') {
                 continue;
             }
 
-            $this->edizioneCompetizioni->iscriviSquadraACompetizione(
-                $idEdizioneCompetizioneDestinazione,
-                $idSquadra,
-                'Iscritta',
-                'Avanzamento stagione'
-            );
+            $this->iscriviSquadraSeManca($idEdizioneCompetizioneDestinazione, $idSquadra, 'Qualificazione nuova stagione');
         }
+    }
+
+    private function mappaSpostamentiPerSquadra(array $movimenti): array
+    {
+        $mappa = [];
+
+        foreach ($movimenti as $movimento) {
+            $azione = (string) ($movimento['azione'] ?? '');
+            $idSquadra = (int) ($movimento['id_squadra'] ?? 0);
+            $idDestinazione = (int) ($movimento['id_edizione_competizione_destinazione'] ?? 0);
+
+            if ($azione !== 'spostamento' || $idSquadra <= 0 || $idDestinazione <= 0) {
+                continue;
+            }
+
+            $mappa[$idSquadra] = $idDestinazione;
+        }
+
+        return $mappa;
+    }
+
+    private function mappaCompetizioniPerCompetizioneBase(array $competizioni): array
+    {
+        $mappa = [];
+
+        foreach ($competizioni as $competizione) {
+            $idCompetizioneBase = (int) ($competizione['IDCompetizione'] ?? 0);
+
+            if ($idCompetizioneBase <= 0) {
+                continue;
+            }
+
+            $mappa[$idCompetizioneBase] = $competizione;
+        }
+
+        return $mappa;
+    }
+
+    private function iscriviSquadraSeManca(
+        int $idEdizioneCompetizione,
+        int $idSquadra,
+        string $nota
+    ): void {
+        $iscritte = $this->edizioneCompetizioni->squadreIscritteACompetizione($idEdizioneCompetizione);
+
+        foreach ($iscritte as $squadra) {
+            if ((int) ($squadra['IDSquadra'] ?? 0) === $idSquadra) {
+                return;
+            }
+        }
+
+        $this->edizioneCompetizioni->iscriviSquadraACompetizione(
+            $idEdizioneCompetizione,
+            $idSquadra,
+            'Iscritta',
+            $nota
+        );
     }
 }

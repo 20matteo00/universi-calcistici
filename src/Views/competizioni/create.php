@@ -8,12 +8,14 @@ use App\Support\CompetitionTypes;
 ?>
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nuova competizione</title>
     <?php require __DIR__ . '/../partials/link.php'; ?>
 </head>
+
 <body>
     <div class="container py-4">
         <div class="mb-4">
@@ -44,7 +46,7 @@ use App\Support\CompetitionTypes;
                                 <h2 class="h5 mb-3">Dati generali</h2>
 
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md">
                                         <label for="nome_competizione" class="form-label">Nome competizione</label>
                                         <input
                                             type="text"
@@ -56,7 +58,7 @@ use App\Support\CompetitionTypes;
                                             value="<?= htmlspecialchars((string) ($vecchiDati['nome_competizione'] ?? '')) ?>">
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md">
                                         <label for="numero_partecipanti" class="form-label">Partecipanti</label>
                                         <input
                                             type="number"
@@ -68,7 +70,7 @@ use App\Support\CompetitionTypes;
                                             value="<?= (int) ($vecchiDati['numero_partecipanti'] ?? 20) ?>">
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md">
                                         <label for="giri" class="form-label">Giri</label>
                                         <input
                                             type="number"
@@ -80,7 +82,7 @@ use App\Support\CompetitionTypes;
                                             value="<?= (int) ($vecchiDati['giri'] ?? 1) ?>">
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md">
                                         <label for="tipo" class="form-label">Tipo</label>
                                         <?php $tipoSelezionato = (string) ($vecchiDati['tipo'] ?? 'lega'); ?>
                                         <select
@@ -96,7 +98,7 @@ use App\Support\CompetitionTypes;
                                         </select>
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md">
                                         <label for="inizialmente_vuota" class="form-label">Vuota all'inizio</label>
                                         <select
                                             class="form-select"
@@ -104,6 +106,16 @@ use App\Support\CompetitionTypes;
                                             name="inizialmente_vuota">
                                             <option value="0" <?= empty($vecchiDati['inizialmente_vuota']) ? 'selected' : '' ?>>No</option>
                                             <option value="1" <?= !empty($vecchiDati['inizialmente_vuota']) ? 'selected' : '' ?>>Sì</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md">
+                                        <label for="eredita_partecipanti" class="form-label">Eredita partecipanti</label>
+                                        <select
+                                            class="form-select"
+                                            id="eredita_partecipanti"
+                                            name="eredita_partecipanti">
+                                            <option value="1" <?= !empty($vecchiDati['eredita_partecipanti']) ? 'selected' : '' ?>>Sì</option>
+                                            <option value="0" <?= empty($vecchiDati['eredita_partecipanti']) ? 'selected' : '' ?>>No</option>
                                         </select>
                                     </div>
                                 </div>
@@ -447,4 +459,5 @@ use App\Support\CompetitionTypes;
         });
     </script>
 </body>
+
 </html>

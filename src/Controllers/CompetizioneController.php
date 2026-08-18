@@ -64,6 +64,7 @@ class CompetizioneController
             'numero_partecipanti' => 20,
             'giri' => 1,
             'inizialmente_vuota' => 0,
+            'eredita_partecipanti' => 1,
             'struttura' => '',
         ];
 
@@ -87,6 +88,7 @@ class CompetizioneController
             'numero_partecipanti' => (int) ($request->body['numero_partecipanti'] ?? 0),
             'giri' => (int) ($request->body['giri'] ?? 1),
             'inizialmente_vuota' => (int) ($request->body['inizialmente_vuota'] ?? 0),
+            'eredita_partecipanti' => (int) ($request->body['eredita_partecipanti'] ?? 1),
             'struttura' => trim((string) ($request->body['struttura'] ?? '')),
         ];
 
@@ -105,6 +107,7 @@ class CompetizioneController
             'numero_partecipanti' => $vecchiDati['numero_partecipanti'],
             'giri' => $vecchiDati['giri'],
             'inizialmente_vuota' => $vecchiDati['inizialmente_vuota'],
+            'eredita_partecipanti' => $vecchiDati['eredita_partecipanti'],
             'struttura' => $vecchiDati['struttura'] !== '' ? $vecchiDati['struttura'] : null,
         ]);
 
@@ -141,6 +144,7 @@ class CompetizioneController
             'numero_partecipanti' => (int) ($competizione['NumeroPartecipanti'] ?? 0),
             'giri' => (int) ($competizione['Giri'] ?? 1),
             'inizialmente_vuota' => (int) ($competizione['InizialmenteVuota'] ?? 0),
+            'eredita_partecipanti' => (int) ($competizione['EreditaPartecipanti'] ?? 1),
             'struttura' => $this->formattaJson((string) ($competizione['Struttura'] ?? '')),
         ];
 
@@ -168,6 +172,7 @@ class CompetizioneController
             'numero_partecipanti' => (int) ($request->body['numero_partecipanti'] ?? 0),
             'giri' => (int) ($request->body['giri'] ?? 1),
             'inizialmente_vuota' => (int) ($request->body['inizialmente_vuota'] ?? 0),
+            'eredita_partecipanti' => (int) ($request->body['eredita_partecipanti'] ?? 1),
             'struttura' => trim((string) ($request->body['struttura'] ?? '')),
         ];
 
@@ -186,6 +191,7 @@ class CompetizioneController
             'numero_partecipanti' => $vecchiDati['numero_partecipanti'],
             'giri' => $vecchiDati['giri'],
             'inizialmente_vuota' => $vecchiDati['inizialmente_vuota'],
+            'eredita_partecipanti' => $vecchiDati['eredita_partecipanti'],
             'struttura' => $vecchiDati['struttura'] !== '' ? $vecchiDati['struttura'] : null,
         ]);
 

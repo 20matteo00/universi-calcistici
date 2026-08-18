@@ -22,6 +22,7 @@ class Competizione
                 c.NumeroPartecipanti,
                 c.Giri,
                 c.InizialmenteVuota,
+                c.EreditaPartecipanti,
                 c.Struttura,
                 c.Creato,
                 c.Modificato,
@@ -55,6 +56,7 @@ class Competizione
             'NumeroPartecipanti' => 'c.NumeroPartecipanti',
             'Giri' => 'c.Giri',
             'InizialmenteVuota' => 'c.InizialmenteVuota',
+            'EreditaPartecipanti' => 'c.EreditaPartecipanti',
             'Universo' => 'u.Nome',
             'Creato' => 'c.Creato',
             'Modificato' => 'c.Modificato',
@@ -97,6 +99,7 @@ class Competizione
                 NumeroPartecipanti,
                 Giri,
                 InizialmenteVuota,
+                EreditaPartecipanti,
                 Struttura
             )
             VALUES (
@@ -106,6 +109,7 @@ class Competizione
                 :numero_partecipanti,
                 :giri,
                 :inizialmente_vuota,
+                :eredita_partecipanti,
                 :struttura
             )
         ");
@@ -141,6 +145,7 @@ class Competizione
                 NumeroPartecipanti = :numero_partecipanti,
                 Giri = :giri,
                 InizialmenteVuota = :inizialmente_vuota,
+                EreditaPartecipanti = :eredita_partecipanti,
                 Struttura = :struttura
             WHERE ID = :id
         ");
@@ -183,6 +188,7 @@ class Competizione
                 c.NumeroPartecipanti,
                 c.Giri,
                 c.InizialmenteVuota,
+                c.EreditaPartecipanti,
                 c.Struttura,
                 c.Creato,
                 c.Modificato
@@ -211,6 +217,7 @@ class Competizione
             'NumeroPartecipanti' => 'c.NumeroPartecipanti',
             'Giri' => 'c.Giri',
             'InizialmenteVuota' => 'c.InizialmenteVuota',
+            'EreditaPartecipanti' => 'c.EreditaPartecipanti',
             'Creato' => 'c.Creato',
             'Modificato' => 'c.Modificato',
         ];
@@ -240,6 +247,7 @@ class Competizione
                 c.NumeroPartecipanti,
                 c.Giri,
                 c.InizialmenteVuota,
+                c.EreditaPartecipanti,
                 c.Struttura,
                 c.Creato,
                 c.Modificato,

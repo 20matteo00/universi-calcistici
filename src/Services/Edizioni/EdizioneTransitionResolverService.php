@@ -79,15 +79,91 @@ final class EdizioneTransitionResolverService
 
     private function squadrePerPosizione(array $competizioneCorrente, int $da, int $a): array
     {
+        if ($da <= 0 || $a <= 0 || $a < $da) {
+            return [];
+        }
+
+        $rankingFinale = $this->estraiRankingFinale($competizioneCorrente);
+        if ($rankingFinale === []) {
+            return [];
+        }
+
+        usort(
+            $rankingFinale,
+            fn(array $x, array $y): int => ((int) ($x['posizione'] ?? 0) <=> (int) ($y['posizione'] ?? 0))
+                ?: ((int) ($x['id_squadra'] ?? 0) <=> (int) ($y['id_squadra'] ?? 0))
+        );
+
+        $slice = array_slice($rankingFinale, $da - 1, $a - $da + 1);
+
+        $ids = [];
+        foreach ($slice as $voce) {
+            $idSquadra = (int) ($voce['id_squadra'] ?? 0);
+            if ($idSquadra > 0) {
+                $ids[] = $idSquadra;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private function miglioriN(array $competizioneCorrente, int $numero): array
+    {
+        return $this->squadrePerPosizione($competizioneCorrente, 1, $numero);
+    }
+
+    private function estraiRankingFinale(array $competizioneCorrente): array
+    {
+        $podioSalvato = $this->decodificaJson((string) ($competizioneCorrente['Podio'] ?? ''));
+
+        if ($podioSalvato !== []) {
+            $ranking = [];
+
+            foreach ($podioSalvato as $voce) {
+                if (!is_array($voce)) {
+                    continue;
+                }
+
+                $posizione = (int) ($voce['posizione'] ?? 0);
+                $idSquadra = (int) ($voce['id_squadra'] ?? 0);
+
+                if ($posizione <= 0 || $idSquadra <= 0) {
+                    continue;
+                }
+
+                $ranking[] = [
+                    'posizione' => $posizione,
+                    'id_squadra' => $idSquadra,
+                    'tipo' => (string) ($voce['tipo'] ?? 'univoca'),
+                ];
+            }
+
+            if ($ranking !== []) {
+                usort(
+                    $ranking,
+                    fn(array $a, array $b): int => ((int) $a['posizione'] <=> (int) $b['posizione'])
+                        ?: ((int) $a['id_squadra'] <=> (int) $b['id_squadra'])
+                );
+
+                return $ranking;
+            }
+        }
+
+        return $this->fallbackRankingDaClassificaLive($competizioneCorrente);
+    }
+
+    private function fallbackRankingDaClassificaLive(array $competizioneCorrente): array
+    {
         $idEdizione = (int) ($competizioneCorrente['IDEdizione'] ?? 0);
         $idEdizioneCompetizione = (int) ($competizioneCorrente['ID'] ?? 0);
+        $idUniverso = (int) ($competizioneCorrente['IDUniverso'] ?? 0);
 
-        if ($idEdizione <= 0 || $idEdizioneCompetizione <= 0 || $da <= 0 || $a <= 0) {
+        if ($idUniverso <= 0 || $idEdizione <= 0 || $idEdizioneCompetizione <= 0) {
             return [];
         }
 
         $pagina = $this->classificaService->build(
-            (int) ($competizioneCorrente['IDUniverso'] ?? 0),
+            $idUniverso,
             $idEdizione,
             $idEdizioneCompetizione,
             []
@@ -98,21 +174,28 @@ final class EdizioneTransitionResolverService
         }
 
         $righe = $pagina['visteClassifica']['generale'] ?? [];
-        $ids = [];
+        if (!is_array($righe) || $righe === []) {
+            return [];
+        }
+
+        $ranking = [];
 
         foreach ($righe as $riga) {
             $posizione = (int) ($riga['Posizione'] ?? 0);
-            if ($posizione >= $da && $posizione <= $a) {
-                $ids[] = (int) ($riga['IDSquadra'] ?? 0);
+            $idSquadra = (int) ($riga['IDSquadra'] ?? 0);
+
+            if ($posizione <= 0 || $idSquadra <= 0) {
+                continue;
             }
+
+            $ranking[] = [
+                'posizione' => $posizione,
+                'id_squadra' => $idSquadra,
+                'tipo' => 'univoca',
+            ];
         }
 
-        return array_values(array_filter($ids));
-    }
-
-    private function miglioriN(array $competizioneCorrente, int $numero): array
-    {
-        return $this->squadrePerPosizione($competizioneCorrente, 1, $numero);
+        return $ranking;
     }
 
     private function azioneDaTipo(string $tipo): string

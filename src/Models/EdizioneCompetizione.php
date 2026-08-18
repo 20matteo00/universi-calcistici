@@ -28,6 +28,7 @@ class EdizioneCompetizione
                 c.NumeroPartecipanti,
                 c.Giri,
                 c.InizialmenteVuota,
+                c.EreditaPartecipanti,
                 c.Struttura
             FROM EdizioneCompetizione ec
             INNER JOIN Competizioni c ON c.ID = ec.IDCompetizione
@@ -61,6 +62,7 @@ class EdizioneCompetizione
                 c.NumeroPartecipanti,
                 c.Giri,
                 c.InizialmenteVuota,
+                c.EreditaPartecipanti,
                 c.Struttura
             FROM EdizioneCompetizione ec
             INNER JOIN Competizioni c ON c.ID = ec.IDCompetizione

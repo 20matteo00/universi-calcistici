@@ -138,6 +138,7 @@ CREATE TABLE Competizioni (
     NumeroPartecipanti INT UNSIGNED NOT NULL DEFAULT 0,
     Giri INT UNSIGNED NOT NULL DEFAULT 1,
     InizialmenteVuota BOOLEAN NOT NULL DEFAULT 0,
+    EreditaPartecipanti BOOLEAN NOT NULL DEFAULT 0,
     Struttura JSON NULL,
     -- regole effettive: punti vittoria/pareggio, andata/ritorno,
     -- n. gruppi, tie-break, playoff/out, ecc.
