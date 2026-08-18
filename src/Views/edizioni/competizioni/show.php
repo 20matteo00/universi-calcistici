@@ -6,6 +6,7 @@
 /** @var array $blocchiPartite */
 /** @var array $statoEliminazione */
 /** @var array $fasiBloccate */
+/** @var array $analisiChiusura */
 
 use App\Support\Icons;
 
@@ -72,6 +73,12 @@ function uc_style_squadra(?string $jsonColori): array
 <body>
 
     <div class="container py-4 competizione-page">
+        <?php
+        $statoCompetizione = (string) ($statoCompetizione ?? ($competizione['Stato'] ?? 'in_corso'));
+        $isConclusa = (bool) ($isConclusa ?? ($statoCompetizione === 'conclusa'));
+        $analisiChiusura = is_array($analisiChiusura ?? null) ? $analisiChiusura : ['ok' => false, 'motivi' => []];
+        ?>
+
         <div class="d-flex flex-wrap align-items-start gap-3 mb-3">
             <div>
                 <a
@@ -97,10 +104,45 @@ function uc_style_squadra(?string $jsonColori): array
                         Vai alla classifica
                     </a>
                 <?php endif; ?>
+
+                <?php if ($isConclusa): ?>
+                    <button type="button" class="btn btn-success" disabled>
+                        Competizione conclusa
+                    </button>
+                <?php elseif (!empty($analisiChiusura['ok'])): ?>
+                    <form
+                        method="post"
+                        action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/chiudi">
+                        <button type="submit" class="btn btn-success">
+                            Chiudi competizione
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <button type="button" class="btn btn-outline-secondary" disabled>
+                        Competizione non chiudibile
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
 
-        <?php if ($isEliminazioneDiretta && !empty($statoEliminazione['bloccanti'])): ?>
+        <?php if ($isConclusa): ?>
+            <div class="alert alert-success mb-4">
+                <strong>Competizione conclusa.</strong> I risultati non sono più modificabili.
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$isConclusa && !empty($analisiChiusura['motivi'])): ?>
+            <div class="alert alert-info mb-4">
+                <strong>Chiusura non disponibile.</strong>
+                <ul class="mb-0 mt-2">
+                    <?php foreach ($analisiChiusura['motivi'] as $motivo): ?>
+                        <li><?= htmlspecialchars((string) $motivo) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$isConclusa && $isEliminazioneDiretta && !empty($statoEliminazione['bloccanti'])): ?>
             <div class="alert alert-warning mb-4" id="warning-eliminazione">
                 <strong>Avanzamento bloccato.</strong> Alcuni accoppiamenti sono ancora in parità o incompleti.
                 <ul class="mb-0 mt-2">
@@ -114,7 +156,12 @@ function uc_style_squadra(?string $jsonColori): array
             </div>
         <?php endif; ?>
 
-        <?php if ($isEliminazioneDiretta && empty($statoEliminazione['bloccanti']) && !empty($statoEliminazione['turno'])): ?>
+        <?php if (
+            !$isConclusa
+            && $isEliminazioneDiretta
+            && empty($statoEliminazione['bloccanti'])
+            && !empty($statoEliminazione['turno'])
+        ): ?>
             <form
                 method="post"
                 action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/eliminazione/avanza"
@@ -139,15 +186,24 @@ function uc_style_squadra(?string $jsonColori): array
                             <span class="badge rounded-pill text-bg-dark">Competizione</span>
                             <span class="badge rounded-pill text-bg-light"><?= htmlspecialchars((string) ($competizione['Tipo'] ?? '')) ?></span>
                             <span class="badge rounded-pill text-bg-light"><?= $totalePartite ?> match</span>
+                            <span class="badge rounded-pill <?= $isConclusa ? 'text-bg-success' : 'text-bg-warning' ?>">
+                                <?= $isConclusa ? 'Conclusa' : 'In corso' ?>
+                            </span>
                         </div>
                         <div class="small text-muted">
-                            Gestisci risultati, simulazioni e aggiornamenti per ogni blocco.
+                            <?= $isConclusa
+                                ? 'Competizione chiusa: i risultati restano disponibili in sola lettura.'
+                                : 'Gestisci risultati, simulazioni e aggiornamenti per ogni blocco.' ?>
                         </div>
                     </div>
 
                     <?php if ($isLega): ?>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="submit" form="form-salva-tutto" class="btn btn-primary">
+                            <button
+                                type="submit"
+                                form="form-salva-tutto"
+                                class="btn btn-primary"
+                                <?= $isConclusa ? 'disabled' : '' ?>>
                                 Salva tutto
                             </button>
 
@@ -156,7 +212,8 @@ function uc_style_squadra(?string $jsonColori): array
                                 form="form-salva-tutto"
                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/simula-tutte"
                                 formmethod="post"
-                                class="btn btn-outline-primary">
+                                class="btn btn-outline-primary"
+                                <?= $isConclusa ? 'disabled' : '' ?>>
                                 Simula tutto
                             </button>
 
@@ -165,13 +222,16 @@ function uc_style_squadra(?string $jsonColori): array
                                 form="form-salva-tutto"
                                 formaction="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/reset-tutte"
                                 formmethod="post"
-                                class="btn btn-outline-danger">
+                                class="btn btn-outline-danger"
+                                <?= $isConclusa ? 'disabled' : '' ?>>
                                 Elimina tutto
                             </button>
                         </div>
                     <?php else: ?>
                         <div class="alert alert-light border mb-0 py-2 px-3 small">
-                            Nelle coppe conviene agire per blocco o per singola partita.
+                            <?= $isConclusa
+                                ? 'La coppa è conclusa e non può più essere modificata.'
+                                : 'Nelle coppe conviene agire per blocco o per singola partita.' ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -190,12 +250,13 @@ function uc_style_squadra(?string $jsonColori): array
                     $faseBloccata = $isEliminazioneDiretta && $faseBlocco !== ''
                         ? (bool) ($fasiBloccate[$faseBlocco] ?? false)
                         : false;
+                    $bloccoNonModificabile = $faseBloccata || $isConclusa;
 
                     $primaPartitaBlocco = $blocco['partite'][0] ?? null;
                     $dettagliBlocco = $primaPartitaBlocco ? uc_leggi_dettagli_partita($primaPartitaBlocco) : [];
                     ?>
                     <div class="col-12 col-xl-6" id="<?= htmlspecialchars((string) $blocco['anchor']) ?>">
-                        <div class="card shadow-sm h-100 uc-match-card <?= $faseBloccata ? 'border-secondary' : '' ?>">
+                        <div class="card shadow-sm h-100 uc-match-card <?= $bloccoNonModificabile ? 'border-secondary' : '' ?>">
                             <div class="card-header d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 py-3 bg-white">
                                 <div class="text-center text-md-start w-100">
                                     <h3 class="h5 fw-semibold mb-1">
@@ -215,15 +276,17 @@ function uc_style_squadra(?string $jsonColori): array
                                         <?php endif; ?>
 
                                         <?php if ($faseBloccata): ?>
-                                            <span class="badge text-bg-secondary">
-                                                Turno bloccato
-                                            </span>
+                                            <span class="badge text-bg-secondary">Turno bloccato</span>
+                                        <?php endif; ?>
+
+                                        <?php if ($isConclusa): ?>
+                                            <span class="badge text-bg-success">Sola lettura</span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
 
                                 <div class="d-flex flex-wrap gap-2 uc-block-toolbar">
-                                    <?php if (!$faseBloccata): ?>
+                                    <?php if (!$bloccoNonModificabile): ?>
                                         <?php if ($faseBlocco !== ''): ?>
                                             <button
                                                 type="submit"
@@ -281,7 +344,7 @@ function uc_style_squadra(?string $jsonColori): array
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                                            Turno bloccato
+                                            <?= $isConclusa ? 'Competizione conclusa' : 'Turno bloccato' ?>
                                         </button>
                                     <?php endif; ?>
                                 </div>
@@ -291,6 +354,12 @@ function uc_style_squadra(?string $jsonColori): array
                                 <?php if ($faseBloccata): ?>
                                     <div class="alert alert-secondary rounded-0 border-0 border-bottom mb-0 small">
                                         Questo turno non è più modificabile perché è già stata generata una fase successiva.
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($isConclusa): ?>
+                                    <div class="alert alert-success rounded-0 border-0 border-bottom mb-0 small">
+                                        Competizione conclusa: modifiche disabilitate.
                                     </div>
                                 <?php endif; ?>
 
@@ -344,7 +413,7 @@ function uc_style_squadra(?string $jsonColori): array
                                                                     data-partita-id="<?= (int) $partita['ID'] ?>"
                                                                     placeholder="-"
                                                                     style="width:42px; min-width:42px;"
-                                                                    <?= $faseBloccata ? 'disabled' : '' ?>>
+                                                                    <?= $bloccoNonModificabile ? 'disabled' : '' ?>>
 
                                                                 <span class="input-group-text px-1 py-0 border-0 bg-transparent">:</span>
 
@@ -360,7 +429,7 @@ function uc_style_squadra(?string $jsonColori): array
                                                                     data-partita-id="<?= (int) $partita['ID'] ?>"
                                                                     placeholder="-"
                                                                     style="width:42px; min-width:42px;"
-                                                                    <?= $faseBloccata ? 'disabled' : '' ?>>
+                                                                    <?= $bloccoNonModificabile ? 'disabled' : '' ?>>
                                                             </div>
                                                         </div>
 
@@ -390,7 +459,7 @@ function uc_style_squadra(?string $jsonColori): array
                                                             <i class="bi bi-info-lg"></i>
                                                         </button>
 
-                                                        <?php if (!$faseBloccata): ?>
+                                                        <?php if (!$bloccoNonModificabile): ?>
                                                             <form
                                                                 method="post"
                                                                 action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/competizioni/<?= (int) $competizione['ID'] ?>/partite/risultato"
@@ -447,7 +516,7 @@ function uc_style_squadra(?string $jsonColori): array
                                                             <button
                                                                 type="button"
                                                                 class="btn btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center p-0"
-                                                                title="Turno bloccato"
+                                                                title="<?= $isConclusa ? 'Competizione conclusa' : 'Turno bloccato' ?>"
                                                                 style="width:34px; height:34px;"
                                                                 disabled>
                                                                 <i class="bi bi-lock"></i>

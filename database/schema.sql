@@ -168,6 +168,7 @@ CREATE TABLE EdizioneCompetizione (
     ID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     IDEdizione INT UNSIGNED NOT NULL,
     IDCompetizione INT UNSIGNED NOT NULL,
+    Stato ENUM('in_corso', 'conclusa') NOT NULL DEFAULT 'in_corso',
     Podio JSON NULL,
     -- es. {"1":IDSquadra,"2":IDSquadra,"3":IDSquadra,"4":IDSquadra}
     Creato DATETIME DEFAULT CURRENT_TIMESTAMP,

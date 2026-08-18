@@ -19,9 +19,14 @@ class EdizioneCreateService
     ): int {
         $pdo = Database::getConnessione();
         $edizioni = new Edizione();
+        $gestisceTransazione = !$pdo->inTransaction();
 
         try {
-            $pdo->beginTransaction();
+            if ($gestisceTransazione) {
+                $pdo->beginTransaction();
+            }
+
+            $idEdizionePrecedente = $this->trovaUltimaEdizioneId($idUniverso);
 
             $idEdizione = $edizioni->create([
                 'id_universo' => $idUniverso,
@@ -34,15 +39,21 @@ class EdizioneCreateService
 
             if ($copiaGiocatori) {
                 $this->copiaGiocatoriInEdizione($idUniverso, $idEdizione);
+
+                if ($idEdizionePrecedente !== null) {
+                    $this->copiaRoseDaEdizionePrecedente($idEdizionePrecedente, $idEdizione);
+                }
             }
 
             $this->creaEdizioniCompetizione($idUniverso, $idEdizione);
 
-            $pdo->commit();
+            if ($gestisceTransazione) {
+                $pdo->commit();
+            }
 
             return $idEdizione;
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
+            if ($gestisceTransazione && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
 
@@ -110,6 +121,47 @@ class EdizioneCreateService
         $statement->execute([
             'idEdizione' => $idEdizione,
             'idUniverso' => $idUniverso,
+        ]);
+    }
+
+    private function trovaUltimaEdizioneId(int $idUniverso): ?int
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        SELECT ID
+        FROM Edizioni
+        WHERE IDUniverso = :idUniverso
+        ORDER BY Anno DESC, ID DESC
+        LIMIT 1
+    ");
+
+        $statement->execute([
+            'idUniverso' => $idUniverso,
+        ]);
+
+        $id = $statement->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
+    }
+
+    private function copiaRoseDaEdizionePrecedente(int $idEdizionePrecedente, int $idNuovaEdizione): void
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        INSERT INTO EdizioneSquadraGiocatore (IDEdizione, IDSquadra, IDGiocatore)
+        SELECT
+            :idNuovaEdizione,
+            esg.IDSquadra,
+            esg.IDGiocatore
+        FROM EdizioneSquadraGiocatore esg
+        WHERE esg.IDEdizione = :idEdizionePrecedente
+    ");
+
+        $statement->execute([
+            'idNuovaEdizione' => $idNuovaEdizione,
+            'idEdizionePrecedente' => $idEdizionePrecedente,
         ]);
     }
 }

@@ -491,4 +491,106 @@ final class CompetizioneEliminazioneDirettaService
             default => -1,
         };
     }
+
+    public function costruisciPodio(int $idEdizioneCompetizione): array
+    {
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        if (!$competizione) {
+            return [];
+        }
+
+        $struttura = $this->decodificaJson($competizione['Struttura'] ?? null);
+        $finaleTerzoPosto = (bool) ($struttura['finale_terzo_posto'] ?? false);
+
+        $partite = $this->partiteQuery->findByEdizioneCompetizione($idEdizioneCompetizione);
+        if ($partite === []) {
+            return [];
+        }
+
+        $finale = array_values(array_filter(
+            $partite,
+            fn(array $partita): bool => (string) ($partita['Fase'] ?? '') === 'Finale'
+        ));
+
+        if ($finale === []) {
+            return [];
+        }
+
+        $esitoFinale = $this->analizzaAccoppiamento(1, $finale);
+        if (($esitoFinale['stato'] ?? '') !== 'ok') {
+            return [];
+        }
+
+        $podio = [
+            [
+                'posizione' => 1,
+                'id_squadra' => (int) $esitoFinale['vincitore'],
+                'tipo' => 'univoca',
+            ],
+            [
+                'posizione' => 2,
+                'id_squadra' => (int) $esitoFinale['perdente'],
+                'tipo' => 'univoca',
+            ],
+        ];
+
+        $finaleTerzo = array_values(array_filter(
+            $partite,
+            fn(array $partita): bool => (string) ($partita['Fase'] ?? '') === 'Finale3Posto'
+        ));
+
+        if ($finaleTerzoPosto && $finaleTerzo !== []) {
+            $esitoFinaleTerzo = $this->analizzaAccoppiamento(1, $finaleTerzo);
+
+            if (($esitoFinaleTerzo['stato'] ?? '') === 'ok') {
+                $podio[] = [
+                    'posizione' => 3,
+                    'id_squadra' => (int) $esitoFinaleTerzo['vincitore'],
+                    'tipo' => 'univoca',
+                ];
+
+                $podio[] = [
+                    'posizione' => 4,
+                    'id_squadra' => (int) $esitoFinaleTerzo['perdente'],
+                    'tipo' => 'univoca',
+                ];
+            }
+        } else {
+            $semifinale = array_values(array_filter(
+                $partite,
+                fn(array $partita): bool => (string) ($partita['Fase'] ?? '') === 'Semifinale'
+            ));
+
+            $accoppiamenti = [];
+            foreach ($semifinale as $partita) {
+                $dettagli = $this->decodificaJson($partita['Dettagli'] ?? null);
+                $numeroAccoppiamento = (int) ($dettagli['numero_accoppiamento'] ?? 0);
+
+                if ($numeroAccoppiamento <= 0) {
+                    continue;
+                }
+
+                if (!isset($accoppiamenti[$numeroAccoppiamento])) {
+                    $accoppiamenti[$numeroAccoppiamento] = [];
+                }
+
+                $accoppiamenti[$numeroAccoppiamento][] = $partita;
+            }
+
+            foreach ($accoppiamenti as $partiteAccoppiamento) {
+                $esitoSemifinale = $this->analizzaAccoppiamento(1, $partiteAccoppiamento);
+
+                if (($esitoSemifinale['stato'] ?? '') === 'ok' && isset($esitoSemifinale['perdente'])) {
+                    $podio[] = [
+                        'posizione' => 3,
+                        'id_squadra' => (int) $esitoSemifinale['perdente'],
+                        'tipo' => 'ex_aequo',
+                        'gruppo' => 'semifinaliste_perdenti',
+                    ];
+                }
+            }
+        }
+
+        return $podio;
+    }
 }

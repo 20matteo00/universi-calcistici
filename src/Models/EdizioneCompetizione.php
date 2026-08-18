@@ -18,9 +18,11 @@ class EdizioneCompetizione
                 ec.ID,
                 ec.IDEdizione,
                 ec.IDCompetizione,
+                ec.Stato,
                 ec.Podio,
                 ec.Creato,
                 ec.Modificato,
+                c.IDUniverso,
                 c.NomeCompetizione,
                 c.Tipo,
                 c.NumeroPartecipanti,
@@ -49,9 +51,11 @@ class EdizioneCompetizione
                 ec.ID,
                 ec.IDEdizione,
                 ec.IDCompetizione,
+                ec.Stato,
                 ec.Podio,
                 ec.Creato,
                 ec.Modificato,
+                c.IDUniverso,
                 c.NomeCompetizione,
                 c.Tipo,
                 c.NumeroPartecipanti,
@@ -210,5 +214,92 @@ class EdizioneCompetizione
         }
 
         return $mappa;
+    }
+
+    public function aggiornaStato(int $idEdizioneCompetizione, string $stato): void
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+            UPDATE EdizioneCompetizione
+            SET Stato = :stato, Modificato = NOW()
+            WHERE ID = :id
+            LIMIT 1
+        ");
+
+        $statement->execute([
+            'id' => $idEdizioneCompetizione,
+            'stato' => $stato,
+        ]);
+    }
+
+    public function conclusa(int $idEdizioneCompetizione): bool
+    {
+        $competizione = $this->findEdizioneCompetizione($idEdizioneCompetizione);
+        return (string) ($competizione['Stato'] ?? 'in_corso') === 'conclusa';
+    }
+
+    public function iscriviSquadraACompetizione(
+        int $idEdizioneCompetizione,
+        int $idSquadra,
+        string $stato = 'Iscritta',
+        string $motivo = 'Iscrizione manuale'
+    ): void {
+        $pdo = Database::getConnessione();
+
+        $check = $pdo->prepare("
+        SELECT 1
+        FROM EdizioneCompetizioneSquadra
+        WHERE IDEdizioneCompetizione = :idEdizioneCompetizione
+          AND IDSquadra = :idSquadra
+        LIMIT 1
+    ");
+
+        $check->execute([
+            'idEdizioneCompetizione' => $idEdizioneCompetizione,
+            'idSquadra' => $idSquadra,
+        ]);
+
+        if ($check->fetchColumn()) {
+            return;
+        }
+
+        $insert = $pdo->prepare("
+        INSERT INTO EdizioneCompetizioneSquadra (
+            IDEdizioneCompetizione,
+            IDSquadra,
+            Stato,
+            Motivo
+        ) VALUES (
+            :idEdizioneCompetizione,
+            :idSquadra,
+            :stato,
+            :motivo
+        )
+    ");
+
+        $insert->execute([
+            'idEdizioneCompetizione' => $idEdizioneCompetizione,
+            'idSquadra' => $idSquadra,
+            'stato' => $stato,
+            'motivo' => $motivo !== '' ? $motivo : null,
+        ]);
+    }
+
+    public function aggiornaPodio(int $idEdizioneCompetizione, array $podio): void
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        UPDATE EdizioneCompetizione
+        SET Podio = :podio, Modificato = NOW()
+        WHERE ID = :id
+        LIMIT 1
+    ");
+
+        $statement->execute([
+            'id' => $idEdizioneCompetizione,
+            'podio' => json_encode(array_values($podio), JSON_UNESCAPED_UNICODE),
+        ]);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Config\Database;
 use App\Http\Request;
+use App\Models\EdizioneCompetizione;
 use App\Models\PartitaQuery;
 use App\Services\Partite\PartitaContextService;
 use App\Services\Partite\PartitaLockService;
@@ -16,6 +17,7 @@ use App\Services\Partite\PartitaSimulationService;
 final class PartitaController
 {
     private PartitaQuery $partiteQuery;
+    private EdizioneCompetizione $edizioneCompetizioni;
     private PartitaContextService $partitaContext;
     private PartitaResultService $partitaResult;
     private PartitaSimulationService $partitaSimulation;
@@ -27,11 +29,34 @@ final class PartitaController
         Database::getConnessione();
 
         $this->partiteQuery = new PartitaQuery();
+        $this->edizioneCompetizioni = new EdizioneCompetizione();
         $this->partitaContext = new PartitaContextService();
         $this->partitaResult = new PartitaResultService();
         $this->partitaSimulation = new PartitaSimulationService();
         $this->partitaReset = new PartitaResetService();
         $this->partitaLock = new PartitaLockService();
+    }
+
+    private function bloccaSeCompetizioneConclusa(
+        int $idUniverso,
+        int $idEdizione,
+        int $idEdizioneCompetizione,
+        ?string $anchor = null
+    ): void {
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if ($competizione === null) {
+            http_response_code(404);
+            echo 'Competizione non trovata';
+            exit;
+        }
+
+        if ((string) ($competizione['Stato'] ?? 'in_corso') !== 'conclusa') {
+            return;
+        }
+
+        $_SESSION['flash_error'] = 'La competizione è conclusa e non può più essere modificata.';
+        $this->redirectCompetizione($idUniverso, $idEdizione, $idEdizioneCompetizione, $anchor);
     }
 
     private function partiteFaseGiornata(
@@ -60,6 +85,12 @@ final class PartitaController
             echo 'Risorsa non trovata';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
 
         $idPartita = (int) ($_POST['id_partita'] ?? 0);
         $goalCasaRaw = $_POST['goal_casa'] ?? '';
@@ -123,6 +154,12 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
+
         $partita = $this->partitaContext->trovaPartitaDellaCompetizione(
             $idPartita,
             $idEdizioneCompetizione
@@ -169,6 +206,12 @@ final class PartitaController
             echo 'Risorsa non trovata';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
 
         $partita = $this->partitaContext->trovaPartitaDellaCompetizione(
             $idPartita,
@@ -222,6 +265,13 @@ final class PartitaController
             echo 'Giornata non valida';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            'giornata-' . $giornata
+        );
 
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
@@ -285,6 +335,13 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            'giornata-' . $giornata
+        );
+
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
 
@@ -330,6 +387,13 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            'giornata-' . $giornata
+        );
+
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $partite = $partitePerGiornata[$giornata] ?? [];
 
@@ -373,6 +437,13 @@ final class PartitaController
             echo 'Fase o giornata non valida';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata)
+        );
 
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
 
@@ -445,6 +516,13 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata)
+        );
+
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
 
         if (
@@ -498,6 +576,13 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione,
+            $this->partitaContext->anchorDaFaseEGiornata($fase, $giornata)
+        );
+
         $partite = $this->partiteFaseGiornata($idEdizioneCompetizione, $fase, $giornata);
 
         if (
@@ -544,6 +629,12 @@ final class PartitaController
             echo 'Risorsa non trovata';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
 
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
         $payloadPartite = $_POST['partite'] ?? [];
@@ -599,6 +690,12 @@ final class PartitaController
             return;
         }
 
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
+
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 
         foreach ($partitePerGiornata as $partite) {
@@ -635,6 +732,12 @@ final class PartitaController
             echo 'Risorsa non trovata';
             return;
         }
+
+        $this->bloccaSeCompetizioneConclusa(
+            $idUniverso,
+            $idEdizione,
+            $idEdizioneCompetizione
+        );
 
         $partitePerGiornata = $this->partiteQuery->partiteRaggruppatePerGiornata($idEdizioneCompetizione);
 

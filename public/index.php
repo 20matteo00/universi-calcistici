@@ -127,6 +127,7 @@ $router->get('/universi/{id}/edizioni/crea', [EdizioneController::class, 'crea']
 $router->post('/universi/{id}/edizioni/salva', [EdizioneController::class, 'salva']);
 $router->get('/universi/{id}/edizioni/{idEdizione}', [EdizioneController::class, 'showByUniverso']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/finalizza', [EdizioneController::class, 'finalizzaEdizione']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/avanza', [EdizioneController::class, 'avanzaEdizione']);
 
 /*
 |--------------------------------------------------------------------------
@@ -152,6 +153,7 @@ $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompe
 $router->get('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'showCompetizione']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}', [EdizioneController::class, 'competizioniUpdate']);
 $router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/eliminazione/avanza', [EdizioneController::class, 'avanzaEliminazioneDiretta']);
+$router->post('/universi/{id}/edizioni/{idEdizione}/competizioni/{idEdizioneCompetizione}/chiudi', [EdizioneController::class, 'chiudiCompetizione']);
 
 /*
 |--------------------------------------------------------------------------

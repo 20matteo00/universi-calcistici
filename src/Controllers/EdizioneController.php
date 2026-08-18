@@ -9,13 +9,16 @@ use App\Models\Edizione;
 use App\Models\EdizioneCompetizione;
 use App\Models\EdizioneGiocatore;
 use App\Models\EdizioneSquadra;
+use App\Models\CompetizioneCollegamento;
 use App\Models\Universo;
 use App\Services\Competizioni\CompetizioneClassificaService;
 use App\Services\Competizioni\CompetizioneShowService;
+use App\Services\Competizioni\CompetizioneStatoService;
 use App\Services\Edizioni\EdizioneCreateService;
 use App\Services\Edizioni\CompetizioneUpdateService;
 use App\Services\Edizioni\EdizioneContextService;
 use App\Services\Edizioni\EdizioneFinalizeService;
+use App\Services\Edizioni\EdizioneAdvanceService;
 use App\Services\Edizioni\RosaAutoAssignService;
 use App\Services\Edizioni\RosaValidatorService;
 use App\Services\Edizioni\RoseUpdateService;
@@ -28,7 +31,9 @@ class EdizioneController
     private EdizioneSquadra $edizioneSquadre;
     private EdizioneGiocatore $edizioneGiocatori;
     private EdizioneCompetizione $edizioneCompetizioni;
+    private CompetizioneCollegamento $competizioneCollegamenti;
     private EdizioneCreateService $creazioneEdizioneService;
+    private EdizioneAdvanceService $edizioneAdvanceService;
     private RosaValidatorService $rosaValidatorService;
     private RosaAutoAssignService $rosaAutoAssignService;
     private RoseUpdateService $roseUpdateService;
@@ -43,6 +48,7 @@ class EdizioneController
         $this->edizioneSquadre = new EdizioneSquadra();
         $this->edizioneGiocatori = new EdizioneGiocatore();
         $this->edizioneCompetizioni = new EdizioneCompetizione();
+        $this->competizioneCollegamenti = new CompetizioneCollegamento();
 
         $this->creazioneEdizioneService = new EdizioneCreateService();
         $this->rosaValidatorService = new RosaValidatorService();
@@ -51,6 +57,7 @@ class EdizioneController
 
         $this->edizioneContextService = new EdizioneContextService();
         $this->edizioneFinalizeService = new EdizioneFinalizeService();
+        $this->edizioneAdvanceService = new EdizioneAdvanceService();
         $this->competizioneUpdateService = new CompetizioneUpdateService();
     }
 
@@ -165,10 +172,20 @@ class EdizioneController
 
         $verificaFinalizzazione = $this->edizioneFinalizeService->verificaFinalizzazione($idEdizione);
 
+        $verificaAvanzamento = $this->edizioneAdvanceService->puoAvanzare($idUniverso, $idEdizione);
+        $puoAvanzareStagione = (bool) ($verificaAvanzamento['ok'] ?? false);
+        $messaggioAvanzamento = $verificaAvanzamento['messaggio'] ?? null;
+
         $haGiocatoriEdizione = (bool) ($verificaFinalizzazione['ha_giocatori_edizione'] ?? false);
         $roseComplete = (bool) ($verificaFinalizzazione['rose_complete'] ?? false);
         $puoFinalizzare = (bool) ($verificaFinalizzazione['ok'] ?? false);
         $messaggioFinalizzazione = $verificaFinalizzazione['messaggio'] ?? null;
+
+        $isUltimaEdizione = $this->edizioni->isUltimaEdizione($idUniverso, $idEdizione);
+
+        $verificaAvanzamento = $this->edizioneAdvanceService->puoAvanzare($idUniverso, $idEdizione);
+        $puoAvanzareStagione = $isUltimaEdizione && (bool) ($verificaAvanzamento['ok'] ?? false);
+        $messaggioAvanzamento = $isUltimaEdizione ? ($verificaAvanzamento['messaggio'] ?? null) : null;
 
         require __DIR__ . '/../Views/edizioni/show.php';
     }
@@ -310,6 +327,9 @@ class EdizioneController
             );
         }
 
+        $collegamentiUniverso = $this->competizioneCollegamenti->allByUniverso($idUniverso);
+        $schemaCollegamenti = $this->buildSchemaCollegamentiCompetizioni($competizioni, $collegamentiUniverso);
+
         $haGiocatoriEdizione = $this->edizioneGiocatori->haGiocatoriEdizione($idEdizione);
         $roseComplete = $haGiocatoriEdizione
             ? $this->rosaValidatorService->tutteLeRoseComplete($idEdizione)
@@ -363,6 +383,7 @@ class EdizioneController
         $edizioneCompetizione = $context['competizione'];
 
         $this->bloccaSeEdizioneNonModificabile($edizione);
+        $this->competizioneModificabileOrRedirect($idEdizioneCompetizione, $idUniverso, $idEdizione);
 
         $idsSquadre = $request->body['ids_squadre'] ?? [];
         if (!is_array($idsSquadre)) {
@@ -510,6 +531,9 @@ class EdizioneController
             return;
         }
 
+        $competizioneStatoService = new CompetizioneStatoService();
+        $analisiChiusura = $competizioneStatoService->analizzaChiusura($idEdizioneCompetizione);
+
         $universo = $pagina['universo'];
         $edizione = $pagina['edizione'];
         $competizione = $pagina['competizione'];
@@ -517,6 +541,9 @@ class EdizioneController
         $blocchiPartite = $pagina['blocchiPartite'];
         $fasiBloccate = $pagina['fasiBloccate'];
         $statoEliminazione = $pagina['statoEliminazione'];
+
+        $statoCompetizione = (string) ($competizione['Stato'] ?? 'in_corso');
+        $isConclusa = $statoCompetizione === 'conclusa';
 
         require __DIR__ . '/../Views/edizioni/competizioni/show.php';
     }
@@ -605,6 +632,11 @@ class EdizioneController
             return;
         }
 
+        $edizione = $context['edizione'];
+        $this->bloccaSeEdizioneNonModificabile($edizione);
+
+        $this->competizioneModificabileOrRedirect($idEdizioneCompetizione, $idUniverso, $idEdizione);
+
         $service = new CompetizioneEliminazioneDirettaService();
         $risultato = $service->avanzaTurno($idEdizioneCompetizione);
 
@@ -625,7 +657,8 @@ class EdizioneController
         $dettaglioRose = $verificaRose;
 
         $totalePartecipantiCompetizioni = $this->universi->totalePartecipantiCompetizioni($idUniverso);
-        $coperturaCompetizioniOk = $totalePartecipantiCompetizioni >= $numeroSquadreUniverso;
+        $coperturaCompetizioniOk = $numeroSquadreUniverso > 0
+            && $totalePartecipantiCompetizioni >= $numeroSquadreUniverso;
 
         return compact(
             'squadre',
@@ -699,5 +732,189 @@ class EdizioneController
     {
         header('Location: ' . $url);
         exit;
+    }
+
+    private function buildSchemaCollegamentiCompetizioni(array $competizioniEdizione, array $collegamentiUniverso): array
+    {
+        $mappaCompetizioniEdizione = [];
+
+        foreach ($competizioniEdizione as $competizione) {
+            $idCompetizione = (int) ($competizione['IDCompetizione'] ?? 0);
+
+            if ($idCompetizione <= 0) {
+                continue;
+            }
+
+            $mappaCompetizioniEdizione[$idCompetizione] = [
+                'id_edizione_competizione' => (int) ($competizione['ID'] ?? 0),
+                'id_competizione' => $idCompetizione,
+                'nome' => (string) ($competizione['NomeCompetizione'] ?? ''),
+                'tipo' => (string) ($competizione['Tipo'] ?? ''),
+                'uscite' => [],
+                'entrate' => [],
+            ];
+        }
+
+        foreach ($collegamentiUniverso as $collegamento) {
+            $idPartenza = (int) ($collegamento['IDCompetizionePartenza'] ?? 0);
+            $idArrivo = (int) ($collegamento['IDCompetizioneArrivo'] ?? 0);
+
+            $parteNellEdizione = isset($mappaCompetizioniEdizione[$idPartenza]);
+            $arrivaNellEdizione = isset($mappaCompetizioniEdizione[$idArrivo]);
+
+            if (!$parteNellEdizione && !$arrivaNellEdizione) {
+                continue;
+            }
+
+            $descrizione = $this->descriviDettagliCollegamento((string) ($collegamento['Dettagli'] ?? ''));
+
+            $voce = [
+                'id' => (int) ($collegamento['ID'] ?? 0),
+                'ordine' => (int) ($collegamento['Ordine'] ?? 0),
+                'descrizione' => $descrizione,
+                'partenza' => [
+                    'id' => $idPartenza,
+                    'nome' => (string) ($collegamento['CompetizionePartenzaNome'] ?? ''),
+                    'tipo' => (string) ($collegamento['CompetizionePartenzaTipo'] ?? ''),
+                ],
+                'arrivo' => [
+                    'id' => $idArrivo,
+                    'nome' => (string) ($collegamento['CompetizioneArrivoNome'] ?? ''),
+                    'tipo' => (string) ($collegamento['CompetizioneArrivoTipo'] ?? ''),
+                ],
+            ];
+
+            if ($parteNellEdizione) {
+                $mappaCompetizioniEdizione[$idPartenza]['uscite'][] = $voce;
+            }
+
+            if ($arrivaNellEdizione) {
+                $mappaCompetizioniEdizione[$idArrivo]['entrate'][] = $voce;
+            }
+        }
+
+        foreach ($mappaCompetizioniEdizione as &$competizione) {
+            usort($competizione['uscite'], fn(array $a, array $b): int => ($a['ordine'] <=> $b['ordine']) ?: ($a['arrivo']['nome'] <=> $b['arrivo']['nome']));
+            usort($competizione['entrate'], fn(array $a, array $b): int => ($a['ordine'] <=> $b['ordine']) ?: ($a['partenza']['nome'] <=> $b['partenza']['nome']));
+        }
+        unset($competizione);
+
+        return array_values($mappaCompetizioniEdizione);
+    }
+
+    private function descriviDettagliCollegamento(string $json): string
+    {
+        $json = trim($json);
+
+        if ($json === '') {
+            return 'Collegamento';
+        }
+
+        $dettagli = json_decode($json, true);
+
+        if (!is_array($dettagli)) {
+            return 'Collegamento';
+        }
+
+        $criterio = (string) ($dettagli['criterio'] ?? '');
+
+        if ($criterio === 'posizione') {
+            $da = (int) ($dettagli['da'] ?? 0);
+            $a = (int) ($dettagli['a'] ?? 0);
+            $tipo = (string) ($dettagli['tipo'] ?? '');
+
+            $range = $da > 0 && $a > 0
+                ? ($da === $a ? (string) $da : ($da . '-' . $a))
+                : 'Posizioni';
+
+            $labelTipo = match ($tipo) {
+                'promozione' => 'Promozione',
+                'retrocessione' => 'Retrocessione',
+                'qualificazione' => 'Qualificazione',
+                'playoff' => 'Playoff',
+                'playout' => 'Playout',
+                default => 'Posizione',
+            };
+
+            return $labelTipo . ': ' . $range;
+        }
+
+        if ($criterio === 'migliori_n') {
+            $numero = (int) ($dettagli['numero'] ?? 0);
+            return $numero > 0 ? 'Migliori ' . $numero : 'Migliori';
+        }
+
+        return 'Collegamento';
+    }
+
+    public function chiudiCompetizione(Request $request, array $params): void
+    {
+        $id = (int) ($params['id'] ?? 0);
+        $idEdizione = (int) ($params['idEdizione'] ?? 0);
+        $idEdizioneCompetizione = (int) ($params['idEdizioneCompetizione'] ?? 0);
+
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+        if ($competizione === null) {
+            $_SESSION['flash_error'] = 'Competizione non trovata.';
+            $this->redirect('/universi/' . $id . '/edizioni/' . $idEdizione . '/competizioni');
+        }
+
+        if ((string) ($competizione['Stato'] ?? 'in_corso') === 'conclusa') {
+            $_SESSION['flash_success'] = 'La competizione è già conclusa.';
+            $this->redirect('/universi/' . $id . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+        }
+
+        $service = new CompetizioneStatoService();
+        $esito = $service->chiudi($idEdizioneCompetizione);
+
+        if (!($esito['chiusa'] ?? false)) {
+            $_SESSION['flash_error'] = $esito['motivi'][0] ?? 'Competizione non chiudibile.';
+        } else {
+            $_SESSION['flash_success'] = 'Competizione chiusa correttamente.';
+        }
+
+        $this->redirect('/universi/' . $id . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+    }
+
+    private function competizioneModificabileOrRedirect(
+        int $idEdizioneCompetizione,
+        int $idUniverso,
+        int $idEdizione
+    ): void {
+        $competizione = $this->edizioneCompetizioni->findEdizioneCompetizione($idEdizioneCompetizione);
+
+        if ($competizione === null) {
+            $_SESSION['flash_error'] = 'Competizione non trovata.';
+            $this->redirect('/universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni');
+        }
+
+        if ((string) ($competizione['Stato'] ?? 'in_corso') === 'conclusa') {
+            $_SESSION['flash_error'] = 'La competizione è conclusa e non può più essere modificata.';
+            $this->redirect('/universi/' . $idUniverso . '/edizioni/' . $idEdizione . '/competizioni/' . $idEdizioneCompetizione);
+        }
+    }
+
+    public function avanzaEdizione(Request $request, array $parametri): void
+    {
+        $idUniverso = (int) ($parametri['id'] ?? 0);
+        $idEdizione = (int) ($parametri['idEdizione'] ?? 0);
+
+        $context = $this->edizioneContextService->requireUniversoEdizione($idUniverso, $idEdizione);
+        if ($context === null) {
+            $this->notFound('Edizione non trovata');
+            return;
+        }
+
+        $risultato = $this->edizioneAdvanceService->avanza($idUniverso, $idEdizione);
+
+        if (!(bool) ($risultato['ok'] ?? false)) {
+            $_SESSION['flash_error'] = (string) ($risultato['messaggio'] ?? 'Impossibile avanzare alla stagione successiva.');
+            $this->redirect('/universi/' . $idUniverso . '/edizioni/' . $idEdizione);
+        }
+
+        $idNuovaEdizione = (int) ($risultato['id_nuova_edizione'] ?? 0);
+        $_SESSION['flash_success'] = 'Nuova stagione creata correttamente.';
+
+        $this->redirect('/universi/' . $idUniverso . '/edizioni/' . $idNuovaEdizione);
     }
 }

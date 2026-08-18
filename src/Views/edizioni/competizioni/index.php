@@ -6,6 +6,7 @@
 /** @var array $conteggi */
 /** @var bool $haGiocatoriEdizione */
 /** @var bool $roseComplete */
+/** @var array $schemaCollegamenti */
 
 ?>
 <!DOCTYPE html>
@@ -34,7 +35,7 @@
             </div>
         <?php endif; ?>
 
-        <div class="row g-3">
+        <div class="row g-3 mb-4">
             <?php foreach ($competizioni as $competizione): ?>
                 <?php
                 $idEdizioneCompetizione = (int) ($competizione['ID'] ?? 0);
@@ -77,6 +78,93 @@
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php if (!empty($schemaCollegamenti)): ?>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Schema collegamenti competizioni</h2>
+                            <p class="text-muted small mb-0">
+                                Una panoramica rapida dei passaggi tra le competizioni presenti in questa edizione.
+                            </p>
+                        </div>
+                        <button
+                            class="btn btn-sm btn-outline-secondary"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#schema-collegamenti"
+                            aria-expanded="false"
+                            aria-controls="schema-collegamenti">
+                            Mostra / nascondi
+                        </button>
+                    </div>
+
+                    <div class="collapse show" id="schema-collegamenti">
+                        <div class="row g-3">
+                            <?php foreach ($schemaCollegamenti as $blocco): ?>
+                                <?php
+                                $uscite = $blocco['uscite'] ?? [];
+                                $entrate = $blocco['entrate'] ?? [];
+                                ?>
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="card h-100 border">
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <h3 class="h6 mb-1">
+                                                    <?= htmlspecialchars((string) ($blocco['nome'] ?? '')) ?>
+                                                </h3>
+                                                <div class="small text-muted">
+                                                    <?= htmlspecialchars((string) ($blocco['tipo'] ?? '')) ?>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <?php if (!empty($uscite)): ?>
+                                                    <div class="small fw-semibold text-uppercase text-muted mb-2">
+                                                        Collega a
+                                                    </div>
+                                                    <div class="d-flex flex-column gap-2">
+                                                        <?php foreach ($uscite as $uscita): ?>
+                                                            <div class="border rounded px-2 py-2 bg-light">
+                                                                <div class="small fw-semibold">
+                                                                    <?= htmlspecialchars((string) ($uscita['descrizione'] ?? 'Collegamento')) ?>
+                                                                    → <?= htmlspecialchars((string) ($uscita['arrivo']['nome'] ?? '')) ?>
+                                                                </div>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="small text-muted">
+                                                        Nessun collegamento in uscita.
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <?php if (!empty($entrate)): ?>
+                                                <div>
+                                                    <div class="small fw-semibold text-uppercase text-muted mb-2">
+                                                        Riceve da
+                                                    </div>
+                                                    <div class="d-flex flex-column gap-2">
+                                                        <?php foreach ($entrate as $entrata): ?>
+                                                            <div class="small text-muted">
+                                                                ↑ <?= htmlspecialchars((string) ($entrata['partenza']['nome'] ?? '')) ?>
+                                                                — <?= htmlspecialchars((string) ($entrata['descrizione'] ?? 'Collegamento')) ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <?php require __DIR__ . '/../../partials/script.php'; ?>

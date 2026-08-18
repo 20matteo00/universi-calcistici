@@ -142,6 +142,20 @@
                 </div>
             </div>
         </div>
+        <?php if (!empty($puoAvanzareStagione)): ?>
+            <form
+                method="post"
+                action="/universi/<?= (int) $universo['ID'] ?>/edizioni/<?= (int) $edizione['ID'] ?>/avanza"
+                class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    Vai alla stagione dopo
+                </button>
+            </form>
+        <?php elseif (!empty($messaggioAvanzamento)): ?>
+            <div class="alert alert-secondary mt-3 mb-0" role="alert">
+                <?= htmlspecialchars((string) $messaggioAvanzamento, ENT_QUOTES, 'UTF-8') ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <?php require __DIR__ . '/../partials/script.php'; ?>

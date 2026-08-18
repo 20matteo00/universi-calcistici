@@ -98,4 +98,42 @@ class Edizione
             'id' => $id,
         ]);
     }
+
+    public function isUltimaEdizione(int $idUniverso, int $idEdizione): bool
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        SELECT ID
+        FROM Edizioni
+        WHERE IDUniverso = :idUniverso
+        ORDER BY Anno DESC, ID DESC
+        LIMIT 1
+    ");
+
+        $statement->execute([
+            'idUniverso' => $idUniverso,
+        ]);
+
+        $ultimoId = (int) ($statement->fetchColumn() ?: 0);
+
+        return $ultimoId === $idEdizione;
+    }
+
+    public function aggiornaStato(int $idEdizione, string $stato): void
+    {
+        $pdo = Database::getConnessione();
+
+        $statement = $pdo->prepare("
+        UPDATE Edizioni
+        SET Stato = :stato
+        WHERE ID = :id
+        LIMIT 1
+    ");
+
+        $statement->execute([
+            'id' => $idEdizione,
+            'stato' => trim($stato),
+        ]);
+    }
 }
