@@ -37,15 +37,13 @@ class DevController
                 'EdizioneCompetizioneSquadra',
                 'EdizioneCompetizione',
                 'CompetizioneCollegamento',
-                'EdizioneSquadreGiocatori',
+                'EdizioneSquadraGiocatore',
                 'EdizioneGiocatore',
                 'EdizioneSquadra',
                 'Edizioni',
                 'UniversoGiocatori',
                 'UniversoSquadre',
                 'Competizioni',
-                'Giocatori',
-                'Squadre',
                 'Universi',
             ];
 
