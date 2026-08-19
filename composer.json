@@ -10,5 +10,10 @@
         "psr-4": {
             "App\\": "src/"
         }
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "rector/rector": "^2.6",
+        "phpunit/phpunit": "^11.5"
     }
 }

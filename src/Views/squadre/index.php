@@ -240,7 +240,7 @@ use App\Support\Countries;
                             </table>
                         </div>
 
-                        <?php if (($pagineTotali ?? 1) > 1): ?>
+                        <?php if (($pagineTotali) > 1): ?>
                             <div class="d-flex justify-content-center mt-4">
                                 <nav aria-label="Paginazione squadre">
                                     <ul class="pagination mb-0 flex-wrap">

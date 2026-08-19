@@ -16,7 +16,7 @@ class Request
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $this->path = parse_url($uri, PHP_URL_PATH) ?? '/';
 
-        $this->query = $_GET ?? [];
+        $this->query = $_GET;
 
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
         $raw = file_get_contents('php://input');
@@ -27,6 +27,6 @@ class Request
             return;
         }
 
-        $this->body = $_POST ?? [];
+        $this->body = $_POST;
     }
 }

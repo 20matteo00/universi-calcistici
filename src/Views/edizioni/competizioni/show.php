@@ -76,7 +76,7 @@ function uc_style_squadra(?string $jsonColori): array
         <?php
         $statoCompetizione = (string) ($statoCompetizione ?? ($competizione['Stato'] ?? 'in_corso'));
         $isConclusa = (bool) ($isConclusa ?? ($statoCompetizione === 'conclusa'));
-        $analisiChiusura = is_array($analisiChiusura ?? null) ? $analisiChiusura : ['ok' => false, 'motivi' => []];
+        $analisiChiusura = is_array($analisiChiusura) ? $analisiChiusura : ['ok' => false, 'motivi' => []];
         ?>
 
         <div class="d-flex flex-wrap align-items-start gap-3 mb-3">

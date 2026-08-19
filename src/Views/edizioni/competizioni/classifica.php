@@ -20,19 +20,17 @@ declare(strict_types=1);
 /** @var array $segmentiCapolista */
 
 $giornate = $giornate ?? [];
-$giornataDa = isset($giornataDa) ? (int) $giornataDa : (!empty($giornate) ? (int) min($giornate) : 1);
-$giornataA = isset($giornataA) ? (int) $giornataA : (!empty($giornate) ? (int) max($giornate) : $giornataDa);
-$sezioneAttiva = in_array(($sezioneAttiva ?? 'squadre'), ['squadre', 'giocatori'], true)
-    ? (string) $sezioneAttiva
-    : 'squadre';
-$tabAttiva = (string) ($tabAttiva ?? 'generale');
-$tabGiocatoriAttiva = (string) ($tabGiocatoriAttiva ?? 'marcatori');
-$tabsSquadre = is_array($tabsSquadre ?? null) ? $tabsSquadre : [];
-$tabsGiocatori = is_array($tabsGiocatori ?? null) ? $tabsGiocatori : [];
-$righeSquadre = is_array($righeSquadre ?? null) ? $righeSquadre : [];
-$righeGiocatori = is_array($righeGiocatori ?? null) ? $righeGiocatori : [];
-$tabellaCapolista = is_array($tabellaCapolista ?? null) ? $tabellaCapolista : [];
-$segmentiCapolista = is_array($segmentiCapolista ?? null) ? $segmentiCapolista : [];
+$giornataDa = $giornataDa !== null ? (int) $giornataDa : (!empty($giornate) ? (int) min($giornate) : 1);
+$giornataA = $giornataA !== null ? (int) $giornataA : (!empty($giornate) ? (int) max($giornate) : $giornataDa);
+$sezioneAttiva = in_array((string) $sezioneAttiva, ['squadre', 'giocatori'], true) ? (string) $sezioneAttiva : 'squadre';
+$tabAttiva = (string) $tabAttiva;
+$tabGiocatoriAttiva = (string) $tabGiocatoriAttiva;
+$tabsSquadre = is_array($tabsSquadre) ? $tabsSquadre : [];
+$tabsGiocatori = is_array($tabsGiocatori) ? $tabsGiocatori : [];
+$righeSquadre = is_array($righeSquadre) ? $righeSquadre : [];
+$righeGiocatori = is_array($righeGiocatori) ? $righeGiocatori : [];
+$tabellaCapolista = is_array($tabellaCapolista) ? $tabellaCapolista : [];
+$segmentiCapolista = is_array($segmentiCapolista) ? $segmentiCapolista : [];
 
 function uc_view_badge_class(string $esito): string
 {
